@@ -1,0 +1,36 @@
+{
+  "name": "@reyadeyat/rasem",
+  "version": "0.0.1",
+  "description": "Rasem - Reyadeyat Mathematics visualization in vanilla Javascript",
+  "main": "index.js",
+  "module": "index.js",
+  "types": "./types/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Reyadeyat/Rasem.git"
+  },
+  "keywords": [
+    "Rasem",
+    "Render",
+    "Json",
+    "SVG",
+    "Graphics",
+    "HTML",
+    "Javascript"
+  ],
+  "author": "Mohammad Nabil Mostafa <coder@mnabil.net>",
+  "license": "SEE LICENSE IN <https://reyadeyat.net/LICENSE/RASEM.LICENSE>",
+  "bugs": {
+    "url": "https://github.com/Reyadeyat/Rasem/issues"
+  },
+  "homepage": "https://github.com/Reyadeyat/Rasem#readme",
+  "peerDependencies": {
+  },
+  "devDependencies": {
+    "typescript": "~5.1.3",
+    "npx": "^10.2.2"
+  }
+}
