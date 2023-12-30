@@ -37,7 +37,7 @@ export class Edge {
         this.end_point = end_point;
     }
 
-    static doEdges(path_points, edge_type, is_closed) {
+    static doEdges(path_points, edge_type, is_line) {
         let edges_array = [];
         for (let i = 1; i < path_points.length; i++) {
             let start_point = path_points[i - 1];
@@ -45,7 +45,7 @@ export class Edge {
             let edge = new Edge(edge_type, start_point, end_point);
             edges_array.push(edge);
         }
-        if (is_closed == true) {
+        if (is_line == false) {
             let start_point = path_points[path_points.length - 1];
             let end_point = path_points[0];
             let edge = new Edge(edge_type, start_point, end_point);

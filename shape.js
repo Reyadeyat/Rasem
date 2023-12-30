@@ -19,41 +19,42 @@ import { Log } from './log.js'
 import { Color } from './color.js'
 import { Point } from './point.js'
 import { Edge } from './edge.js'
+import { Rectangle_2D } from './geometry.js';
 
 export class Shape {
-    /*path_points;
-    path_edges;
-    strokeStyle;
-    fillStyle;
-    is_closed;*/
-    //constructor() {}
-    constructor(id, strokeStyle, fillStyle, clip_x, clip_y, is_closed, is_line, extras) {
-        this.debug = true;
-        //this.debug = false;
+
+    constructor(shape_type, id, stroke_style, fill_style, clip_x, clip_y, extras) {
+        this.shape_type = shape_type;
         this.id = id;
-        this.strokeStyle = strokeStyle;
-        this.fillStyle = fillStyle;
+        this.stroke_style = stroke_style;
+        this.fill_style = fill_style;
         this.clip_x = clip_x;
         this.clip_y = clip_y;
-        this.is_closed = is_closed;
-        this.is_line = is_line;
+        this.is_line = shape_type.toLowerCase() === "line" ? true : false;
         this.extras = extras;
         let keys = Object.keys(this.extras);
         for (let i = 0; i < keys.length; i++) {
             this[keys[i]] = extras[keys[i]];
         }
-        this.isRotating = false;
+        this.is_rotating = false;
         this.rotation_angle = 0;
         this.initialize()
         this.generatePathPoints();
-        if (this.is_line == true) {
+        if (this.is_line == false) {
             this.generatePathPointsAngles();
         }
+        this.shape_control_shape_list = [];
+        this.enable_stroke = false;
     }
 
     generatePathPointsAngles() {
         this.shape_path_points_angles = [];
         this.shape_path_points_radius = [];
+        
+        let min_x = Number.POSITIVE_INFINITY;
+        let min_y = Number.POSITIVE_INFINITY;
+        let max_x = Number.NEGATIVE_INFINITY;
+        let max_y = Number.NEGATIVE_INFINITY;
 
         for (let i = 0; i < this.shape_path_points.length; i++) {
             let point = this.shape_path_points[i];
@@ -66,8 +67,15 @@ export class Shape {
         
             this.shape_path_points_angles[this.shape_path_points_angles.length] = angle;
             this.shape_path_points_radius[this.shape_path_points_radius.length] = this.distance(this.center, point);
+
+            //Bounding Rectangle
+            min_x = Math.min(min_x, point.x);
+            min_y = Math.min(min_y, point.y);
+            max_x = Math.max(max_x, point.x);
+            max_y = Math.max(max_y, point.y);
         }
 
+        this.shape_path_points_bounding_rect = new Rectangle_2D(min_x, min_y, max_x, max_y);
         this.shape_path_edges = Edge.doEdges(this.shape_path_points, Edge.line, true);
     }
 
@@ -79,11 +87,6 @@ export class Shape {
     setBound(clip_x, clip_y) {
         this.clip_x = clip_x;
         this.clip_y = clip_y;
-    }
-
-    show_controls() {
-        //Show Over Every Point
-        //Show Over Edges Centers
     }
 
     distance(point_a, point_b) {
@@ -99,7 +102,16 @@ export class Shape {
         this.frontContext.putImageData(this.frontContextPixels, 0, 0, point.x, point.y, 1, 1);
     }
 
+    switchStrokeOn() {
+        this.enable_stroke = true;
+    }
+
+    switchStrokeOff() {
+        this.enable_stroke = false;
+    }
+
     draw(context) {
+        //this.clipShapeControls(context);
         context.beginPath();
         /*for (let i = 0; i < this.shape_path_edges.length; i++) {
             let edge = this.shape_path_edges[i];
@@ -111,38 +123,45 @@ export class Shape {
             let point = this.shape_path_points[i];
             point.lineTo(context);
         }
-        if (this.is_closed == true) {
-            context.closePath();
-        }
-        /*if (this.strokeStyle != null) {
-            context.strokeStyle = this.strokeStyle;
+        context.closePath();
+        if (this.enable_stroke == true && this.stroke_style != null) {
+            const dash_pattern = [this.stroke_style.line_length, this.stroke_style.line_gab];
+            context.setLineDash(dash_pattern);
+            context.strokeStyle = this.stroke_style.color
+            context.lineWidth = 1;
+            //context.strokeRect(this.shape_path_points_bounding_rect.x, this.shape_path_points_bounding_rect.y, this.shape_path_points_bounding_rect.width, this.shape_path_points_bounding_rect.height);
             context.stroke();
-        }*/
-        if (this.fillStyle != null) {
-            context.fillStyle = this.fillStyle;
+            // Reset the line dash back to solid after drawing
+            context.setLineDash([]);
+        }
+        if (this.is_line == false) {
+            context.fillStyle = this.fill_style.color;
             context.fill();
+        } else {
+            context.strokeStyle = this.fill_style.color;
+            context.stroke();
         }
     }
 
-    clipController(min_point, max_point, newPoint) {
+    clipController(min_point, max_point, new_point) {
         let result = true;
         if (min_point.x < 0) {
-            newPoint.x = this.center.x - 0 - min_point.x;//*-1
+            new_point.x = this.center.x - 0 - min_point.x;//*-1
             result = false;
         }
          
          if (max_point.x > this.clip_x) {
-            newPoint.x = this.center.x - this.clip_x - max_point.x;//*-1
+            new_point.x = this.center.x - this.clip_x - max_point.x;//*-1
             result = false;
         }
         
         if (min_point.y < 0) {
-            newPoint.y = this.center.y - 0 - min_point.y;//*-1
+            new_point.y = this.center.y - 0 - min_point.y;//*-1
             result = false;
         }
         
         if (max_point.y > this.clip_y) {
-            newPoint.y = this.center.y - this.clip_y - max_point.y;//*-1
+            new_point.y = this.center.y - this.clip_y - max_point.y;//*-1
             result = false;
         }
 
@@ -184,19 +203,31 @@ export class Shape {
         throw new Error('You have to implement "isPointInside" in Shape subclass!');
     }
 
-    transformPoints(oldPoint, newPoint) {
+    isPointInsideResizeControl(point) {
+        throw new Error('You have to implement "isPointInsideResizeControl" method in Shape subclass!');
+    }
+
+    isPointInsideRotateControl(point) {
+        throw new Error('You have to implement "isPointInsideRotateControl" method in Shape subclass!');
+    }
+
+    transformPoints(old_point, new_point) {
         throw new Error('You have to implement "transformPoints" method in Shape subclass!');
     }
 
-    scalePoints(oldPoint, newPoint) {
+    scalePoints(old_point, new_point) {
         throw new Error('You have to implement "scalePoints" method in Shape subclass!');
     }
 
-    rotatePoints(oldPoint, newPoint) {
+    rotatePoints(old_point, new_point) {
         throw new Error('You have to implement "rotatePoints" method in Shape subclass!');
     }
 
-    canClip(oldPoint, newPoint) {
+    canClip(old_point, new_point) {
         throw new Error('You have to implement "canClip" method in Shape subclass!');
+    }
+
+    activateControls(context) {
+        throw new Error('You have to implement "activateControls" method in Shape subclass!');
     }
 }

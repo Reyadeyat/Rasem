@@ -20,15 +20,12 @@ import { Shape } from './shape.js'
 import { Point } from './point.js'
 import { Edge } from './edge.js'
 import { Radian } from './geometry.js'
+import { ShapeControl, ShapeControlGroup } from './control.js'
 
 export class Circle extends Shape {
-    /*
-    x;
-    y;
-    width;
-    height;*/
+    
     constructor(id, stroke_style, fill_style, clip_x, clip_y, center_x, center_y, radius) {
-        super(id, stroke_style, fill_style, clip_x, clip_y, true, true,
+        super("Circle", id, stroke_style, fill_style, clip_x, clip_y,
             {center: new Point(center_x, center_y), radius: radius, diameter: radius});
     }
 
@@ -53,21 +50,63 @@ export class Circle extends Shape {
         return false;
     }
 
-    transformPoints(oldPoint, newPoint) {
-        this.center = new Point(this.center.x + newPoint.x - oldPoint.x, this.center.y + newPoint.y - oldPoint.y);
+    transformPoints(old_point, new_point) {
+        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
         this.generatePathPoints();
     }
 
-    scalePoints(oldPoint, newPoint) {
+    draw(context) {
+        super.draw(context);
+        if (Log.is(Log.TRACE_DATA)) {
+            context.strokeStyle = this.stroke_style.color;
+            context.beginPath();
+            context.arc(this.center.x, this.center.y, this.radius, 0, 2 * Math.PI);
+            context.stroke();
+        }
     }
 
-    rotatePoints(oldPoint, newPoint) {
+    scalePoints(old_point, new_point) {
     }
 
-    canClip(oldPoint, newPoint) {
-        let min_point = new Point(this.center.x - this.radius + newPoint.x - oldPoint.x, this.center.y - this.radius + newPoint.y - oldPoint.y);
+    rotatePoints(old_point, new_point) {
+    }
+
+    canClip(old_point, new_point) {
+        let min_point = new Point(this.center.x - this.radius + new_point.x - old_point.x, this.center.y - this.radius + new_point.y - old_point.y);
         let max_point = new Point(min_point.x+this.diameter, min_point.y+this.diameter);
 
-        return this.clipController(min_point, max_point, newPoint);
+        return this.clipController(min_point, max_point, new_point);
+    }
+
+    activateControls(context) {
+        this.shape_control_group = new ShapeControlGroup(this);
+        this.shape_path_points.forEach(point => {
+            this.shape_control_group.addShapeControl(ShapeControl.RESIZE, point, "grey", "white");
+        });
+        this.shape_control_group.addShapeControl(ShapeControl.ROTATE, this.center, "yellow", "green");
+        this.shape_control_group.drawControls(context);
+    }
+
+    refreshShape(point) {
+
+    }
+
+    refreshControls(point) {
+
+    }
+
+    OnMouseClickControl(point) {
+        //refresh shape
+        //refreshControls
+    }
+
+    OnMouseDownControl(point) {
+        //refresh shape
+        //refresh controls
+    }
+
+    OnMouseMoveControl(point) {
+        //refresh shape
+        //refresh controls
     }
 }

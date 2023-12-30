@@ -15,25 +15,19 @@
  * limitations under the License.
  */
 
-export class Radian {
-	constructor() {
-		this.radians = [];
-        for (let degrees = 0; degrees <= 360; degrees++) {
-			this.radians[degrees] = degrees * Math.PI / 180;
-		}
+"use strict";
+
+import { Log } from './log.js'
+
+export class Paint {
+
+    constructor(log_level_name) {
+        Log.setLogLevel(log_level_name);
     }
-}
 
-export class Rectangle_2D {
-	constructor(x1, y1, x2, y2) {
-		this.x1 = x1;
-		this.y1 = y1;
-		this.x2 = x2;
-		this.y2 = y2;
+    
+    /* process.*/
 
-		this.x = x1;
-		this.y = y1;
-		this.width = x2 - x1;
-		this.height = y2 - y1;
-	}
+    draw() {};
+
 }

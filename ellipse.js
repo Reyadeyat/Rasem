@@ -20,15 +20,12 @@ import { Shape } from './shape.js'
 import { Point } from './point.js'
 import { Edge } from './edge.js'
 import { Radian } from './geometry.js'
+import { ShapeControl, ShapeControlGroup } from './control.js'
 
 export class Ellipse extends Shape {
-    /*
-    x;
-    y;
-    width;
-    height;*/
+    
     constructor(id, stroke_style, fill_style, clip_x, clip_y, center_x, center_y, radius_x, radius_y) {
-        super(id, stroke_style, fill_style, clip_x, clip_y, true, true,
+        super("Ellipse", id, stroke_style, fill_style, clip_x, clip_y,
             {center: new Point(center_x, center_y), radius_x: radius_x, radius_y: radius_y});
     }
 
@@ -78,29 +75,29 @@ export class Ellipse extends Shape {
         return false;
     }
 
-    transformPoints(oldPoint, newPoint) {
-        this.center = new Point(this.center.x + newPoint.x - oldPoint.x, this.center.y + newPoint.y - oldPoint.y);
+    transformPoints(old_point, new_point) {
+        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
         this.generatePathPoints();
     }
 
     draw(context) {
         super.draw(context);
-        if (this.debug == true) {
+        if (Log.is(Log.TRACE_DATA)) {
             let radius_a = this.radius;
-            context.strokeStyle = "white";
+            context.strokeStyle = this.stroke_style.color;
             context.beginPath();
             context.arc(this.center.x, this.center.y, radius_a, 0, 2 * Math.PI);
             context.stroke();
         }
     }
 
-    scalePoints(oldPoint, newPoint) {
+    scalePoints(old_point, new_point) {
     }
 
-    rotatePoints(oldPoint, newPoint) {
+    rotatePoints(old_point, new_point) {
         
-        let angle = this.getRotationAngleAroundCenter(oldPoint, newPoint);
-        //Log.info("angle = " + angle + " NP(" + newPoint.x + ", " + newPoint.y + ") OP(" + oldPoint.x + ", " + oldPoint.y + ") CP(" + this.center.x + ", " + this.center.y + ")" );
+        let angle = this.getRotationAngleAroundCenter(old_point, new_point);
+        //Log.info("angle = " + angle + " NP(" + new_point.x + ", " + new_point.y + ") OP(" + old_point.x + ", " + old_point.y + ") CP(" + this.center.x + ", " + this.center.y + ")" );
 
         this.shape_path_points_old = this.shape_path_points;
         this.shape_path_points = [];
@@ -121,10 +118,42 @@ export class Ellipse extends Shape {
         this.shape_path_edges = Edge.doEdges(this.shape_path_points, Edge.line, true);
     }
 
-    canClip(oldPoint, newPoint) {
-        let min_point = new Point(this.center.x - this.radius_x + newPoint.x - oldPoint.x, this.center.y - this.radius_y + newPoint.y - oldPoint.y);
+    canClip(old_point, new_point) {
+        let min_point = new Point(this.center.x - this.radius_x + new_point.x - old_point.x, this.center.y - this.radius_y + new_point.y - old_point.y);
         let max_point = new Point(min_point.x + (this.radius_x * 2), min_point.y + (this.radius_y * 2));
 
-        return this.clipController(min_point, max_point, newPoint);
+        return this.clipController(min_point, max_point, new_point);
+    }
+
+    activateControls(context) {
+        this.shape_control_group = new ShapeControlGroup(this);
+        this.shape_path_points.forEach(point => {
+            this.shape_control_group.addShapeControl(ShapeControl.RESIZE, point, "grey", "white");
+        });
+        this.shape_control_group.addShapeControl(ShapeControl.ROTATE, this.center, "yellow", "green");
+        this.shape_control_group.drawControls(context);
+    }
+
+    refreshShape(point) {
+
+    }
+
+    refreshControls(point) {
+
+    }
+
+    OnMouseClickControl(point) {
+        //refresh shape
+        //refreshControls
+    }
+
+    OnMouseDownControl(point) {
+        //refresh shape
+        //refresh controls
+    }
+
+    OnMouseMoveControl(point) {
+        //refresh shape
+        //refresh controls
     }
 }
