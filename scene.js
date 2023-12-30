@@ -16,26 +16,29 @@
  */
 
 import { Log } from './log.js'
+import { RasemMenu } from './menu.js';
 import { Point } from './point.js'
 
 export class Scene {
-    /*canvas_name;
-    front_canvas;
-    front_canvas_context;
-    back_canvas;
-    back_canvas_context;
-    shapes;
-    
-    */
+
+    static NONE = 0;
+    static START = 100;
+    static DRAG = 200;
+    static RESIZE = 300;
+    static ROTATE = 40;
+    static END = 500;
+
     constructor(canvas_container_id, fore_color, back_color, width, height) {
-        let thisis = this
+        Log.trace("Scene::constructor()");
+        let scene = this
         this.width = width;
         this.height = height;
-        this.shapes = [];
+        this.shape_list = [];
         this.canvas_container_id = canvas_container_id;
 
         this.canvas_container_element = document.getElementById(this.canvas_container_id);
         this.front_canvas = document.createElement('canvas');
+        this.rasem_menu = new RasemMenu(this);
         this.front_canvas.id = canvas_container_id+'_canvas';
         this.canvas_container_element.appendChild(this.front_canvas);
         this.front_canvas.width = width;
@@ -45,20 +48,62 @@ export class Scene {
         //canvas.style.border = "1px solid";
         this.front_canvas_context = this.front_canvas.getContext('2d');
         this.front_canvas_context_pixels = this.front_canvas_context.createImageData(this.width, this.height);
-        this.front_canvas.addEventListener('mousedown', function (event) {
-                thisis.OnMouseDown(event, thisis);
-        }, false);
+        
+        /*this.front_canvas.addEventListener('mousedown', function (event) {
+            Log.trace("Scene::constructor::front_canvas::mousedown()");
+            let point = scene.getPoint(event);
+            scene.OnMouseDown(event, scene);
+        }, false);*/
 
-        this.front_canvas.addEventListener('mousedown', function (event) {
-            thisis.OnMouseDown(event, thisis);
+        this.front_canvas.addEventListener('click', function (event) {
+            Log.trace("Scene::constructor::front_canvas::mousedown()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseClick(event, point);
         }, false);
 
         this.front_canvas.addEventListener('mousemove', function (event) {
-            thisis.OnMouseMove(event, thisis);
+            if (scene.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            Log.trace("Scene::constructor::front_canvas::mousemove()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseMove(event, point);
         }, false);
         
         this.front_canvas.addEventListener('mouseup', function (event) {
-            thisis.OnMouseUp(event, thisis);
+            if (scene.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            Log.trace("Scene::constructor::front_canvas::mouseup()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseUp(event, point);
+        }, false);
+
+        this.front_canvas.addEventListener('mousedown', function (event) {
+            if (scene.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            Log.trace("Scene::constructor::front_canvas::mousedown()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseDown(event, point);
+        }, false);
+
+        this.front_canvas.addEventListener('mousemove', function (event) {
+            if (scene.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            Log.trace("Scene::constructor::front_canvas::mousemove()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseMove(event, point);
+        }, false);
+        
+        this.front_canvas.addEventListener('mouseup', function (event) {
+            if (scene.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            Log.trace("Scene::constructor::front_canvas::mouseup::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
+            let point = scene.getPoint(event);
+            scene.OnMouseUp(event, point);
         }, false);
 
         this.back_canvas = document.createElement('canvas');
@@ -70,187 +115,286 @@ export class Scene {
 
         this.fore_color = fore_color;
         this.back_color = back_color;
-        this.isTransforming = false;
+
+        this.motion_mode = Scene.NONE;
     }
 
-    clean() {
-        this.front_canvas_context.fillStyle = this.back_color;
-        this.front_canvas_context.fillRect(0, 0, this.width, this.height);
+    getPoint(event) {
+        let point = new Point();
+        point.x = event.pageX - this.CanvasBoundingRect.left;
+        point.y = event.pageY - this.CanvasBoundingRect.top;
+        return point;
+    }
+
+    isMotionMode(motion_mode) {
+        return this.motion_mode == motion_mode;
+    }
+
+    static getMotionMode(motion_mode_name) {
+        switch (motion_mode_name.toUpperCase()) {
+            case 'NONE': return Scene.NONE;
+            case 'START': return Scene.START;
+            case 'DRAG': return Scene.DRAG;
+            case 'RESIZE': return Scene.RESIZE;
+            case 'ROTATE': return Scene.ROTATE;
+            case 'END': return Scene.END;
+        }
+        throw new Error("Undefined Modtion Mode '" + motion_mode_name.toUpperCase() + "'");
+    }
+
+    static getMotionModeName(motion_mode) {
+        switch (motion_mode) {
+            case Scene.NONE: return 'NONE';
+            case Scene.START: return 'START';
+            case Scene.DRAG: return 'DRAG';
+            case Scene.RESIZE: return 'RESIZE';
+            case Scene.ROTATE: return 'ROTATE';
+            case Scene.END: return 'END';
+        }
+        throw new Error("Undefined Modtion Mode '" + motion_mode + "'");
+    }
+
+    cleanFrontBuffer() {
+        this.clean(this.front_canvas_context);
+    }
+
+    clean(context) {
+        Log.trace("Scene::clean()");
+        context.fillStyle = this.back_color;
+        context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     }
 
     addShape(shape) {
+        Log.trace("Scene::addShape()");
         shape.setFrontDevice(this.front_canvas_context, this.front_canvas_context_pixels);
-        this.shapes.push(shape);
-        //this.shapes.splice(0, 0, shape);
+        this.shape_list.push(shape);
     }
 
     draw() {
-        this.clean();
-        for (let i = 0; i < this.shapes.length; i++) {
-            //if (this.execludedShape.id != this.shapes[i].id) {
-                this.shapes[i].draw(this.front_canvas_context);
-            //}
+        Log.trace("Scene::draw()");
+        for (let i = 0; i < this.shape_list.length; i++) {
+            this.shape_list[i].draw(this.front_canvas_context);
         };
+    }
+
+    drawShape(context, shape) {
+        Log.trace("Scene::drawShape()");
+        shape.draw(context);
+    }
+
+    drawFrontBuffer() {
+        Log.trace("Scene::drawFrontBuffer()");
         this.back_canvas_context.drawImage(this.front_canvas, 0, 0);
+        this.drawShape(this.front_canvas_context, this.selected_shape);
     }
 
-    drawShape(shape) {
-        shape.draw(this.front_canvas_context);
+    restoreFrontBuffer() {
+        this.front_canvas_context.drawImage(this.back_canvas, 0, 0);
     }
 
-    drawExecludeShape() {
-        this.clean();
-        let idx = 0;
-        for (let i = 0; i < this.shapes.length; i++) {
-            if (this.execludedShape.id != this.shapes[i].id) {
-                this.drawShape(this.shapes[i]);
-                if (idx != 0) {
-                    this.shapes[i - idx] = this.shapes[i];
-                }
-            } else {
-                idx++;
-                Log.info("idx = " + idx);
+    drawBackBuffer() {
+        Log.trace("Scene::drawBackBuffer()");
+        this.clean(this.back_canvas_context);
+        for (let i = 0; i < this.shape_list.length; i++) {
+            //execlude selected shape from back buffer
+            if (this.selected_shape != null && this.selected_shape.id == this.shape_list[i].id) {
+                Log.info("selected_shape {type, index, id} = {'" + this.selected_shape.shape_type + "', " + i + ", " + this.selected_shape.id + "}");
+                continue;
             }
+            this.drawShape(this.back_canvas_context, this.shape_list[i]);
         };
-
-        this.back_canvas_context.drawImage(this.front_canvas, 0, 0);
-
-        if (idx != -1) {
-            this.drawShape(this.execludedShape);
-            this.shapes[this.shapes.length - idx] = this.execludedShape;
-        }
     }
 
-    drawLine(context, x1, y1, x2, y2) {
-        context.beginPath();
-        context.strokeStyle = 'green';
-        context.lineWidth = 1;
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y2);
-        context.stroke();
-        context.closePath();
+    getShapesUnderPoint(point) {
+        let shape_list = [];
+        for (let i = this.shape_list.length - 1; i >= 0; i--) {
+            if (this.shape_list[i].isPointInside(point)) {
+                shape_list.push(this.shape_list[i]);
+            }
+        }
+        return shape_list;
     }
 
-    OnMouseDownTransform(event, thisis) {
-        Log.info("isTransforming = " + thisis.isTransforming);
-        if (thisis.isTransforming == true) {
-            return;
+    OnMouseClick(event, point) {
+        
+        //if select another shape deselect the first then th second
+        if (this.selected_shape != null) {
+            if (this.selected_shape.isPointInside(point) == false) {
+                this.restoreFrontBuffer();
+                this.selected_shape.switchStrokeOff();
+                this.selected_shape.draw(this.front_canvas_context);
+                this.selected_shape = null;
+                return;
+            }
         }
-        let point = new Point();
-        point.x = event.pageX - thisis.CanvasBoundingRect.left;
-        point.y = event.pageY - thisis.CanvasBoundingRect.top;
-        thisis.oldPoint = thisis.newPoint = point;
-        for (let i = thisis.shapes.length - 1; i >= 0; i--) {
-            if (thisis.shapes[i].isPointInside(point)) {
-                thisis.execludedShape = thisis.shapes[i];
-                Log.info("[" + thisis.shapes[i].id + "] (" + point.x + ", " + point.y + ")");
+
+        for (let i = this.shape_list.length - 1; i >= 0; i--) {
+            if (this.shape_list[i].isPointInside(point)) {
+                this.drawBackBuffer();
+                this.motion_mode = Scene.START;
+                this.selected_shape = this.shape_list[i];
+                this.selected_shape.switchStrokeOn();
+                this.selected_shape.activateControls(this.front_canvas_context);
+                Log.info("[" + this.shape_list[i].id + "] (" + point.x + ", " + point.y + ")");
                 break;
             }
         }
-        //Draw Back Canvas Without selected shape;
-        if (thisis.execludedShape != null) {
-            thisis.isTransforming = true;
-            thisis.drawExecludeShape();
-        }
     }
 
-    OnMouseMoveTransform(event, thisis) {
-        if (thisis.isTransforming === true) {
-            //Save New Point
-            let point = new Point();
-            point.x = event.pageX - thisis.CanvasBoundingRect.left;
-            point.y = event.pageY - thisis.CanvasBoundingRect.top;
-            if (thisis.execludedShape.canClip(thisis.oldPoint, point) == true) {
-                thisis.newPoint = point;
-                //Draw Back Canvas
-                thisis.front_canvas_context.drawImage(thisis.back_canvas, 0, 0);
-                //Move Shape Path Points
-                //Draw Dragged Shape
-                thisis.execludedShape.transformPoints(thisis.oldPoint, thisis.newPoint);
-                thisis.drawShape(thisis.execludedShape);
-                thisis.oldPoint = point;
+    OnMouseDown(event, point) {
+        Log.trace("Scene::OnMouseDown()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        if (this.motion_mode == Scene.START) {
+            if (this.selected_shape.isPointInsideResizeControl(point)) {
+                this.motion_mode = Scene.RESIZE;
+            } else if (this.selected_shape.isPointInsideRotateControl(point)) {
+                this.motion_mode = Scene.ROTATE;
+            } else if (this.selected_shape.isPointInside(point)) {
+                this.motion_mode = Scene.DRAG;
             }
         }
+        if (this.motion_mode == Scene.DRAG) {
+            this.OnMouseDownDrag(event, point);
+        } else if (this.motion_mode == Scene.RESIZE) {
+            this.OnMouseDownResize(event, point);
+        } else if (this.motion_mode == Scene.ROTATE) {
+            this.OnMouseDownRotate(event, point);
+        }
     }
 
-    OnMouseUpTransform(event, thisis) {
-        if (thisis.isTransforming === true) {
-            //Save Shape Path New Points
-            thisis.execludedShape.transformPoints(thisis.oldPoint, thisis.newPoint);
-            //Draw Scene
-            thisis.draw();
-            thisis.execludedShape = null;
+    OnMouseMove(event, point) {
+        Log.trace("Scene::OnMouseMove()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        if (this.motion_mode == Scene.DRAG) {
+            this.OnMouseMoveDrag(event, point);
+        } else if (this.motion_mode == Scene.RESIZE) {
+            this.OnMouseMoveResize(event, point);
+        } else if (this.motion_mode == Scene.ROTATE) {
+            this.OnMouseMoveRotate(event, point);
         }
+    }
 
-        thisis.isTransforming = false;
+    OnMouseUp(event, point) {
+        Log.trace("Scene::OnMouseUp()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        if (this.motion_mode == Scene.DRAG) {
+            this.OnMouseUpDrag(event);
+        } else if (this.motion_mode == Scene.RESIZE) {
+            this.OnMouseUpResize(event);
+        } else if (this.motion_mode == Scene.ROTATE) {
+            this.OnMouseUpRotate(event);
+        }
+    }
+
+    OnMouseDownDrag(event, point) {
+        Log.trace("Scene::OnMouseDownDrag()");
+        if (this.isMotionMode(Scene.DRAG) == false) {
+            return;
+        }
+        this.old_point = this.new_point = point;
+        //Draw Back Canvas Without selected shape;
+        if (this.selected_shape != null && this.selected_shape.isPointInside(point)) {
+            this.drawBackBuffer();
+        }
+    }
+
+    OnMouseMoveDrag(event, point) {
+        Log.trace("Scene::OnMouseMoveDrag()");
+        if (this.selected_shape.canClip(this.old_point, point) == true) {
+            this.new_point = point;
+            //Draw Back Canvas
+            this.front_canvas_context.drawImage(this.back_canvas, 0, 0);
+            //Move Shape Path Points
+            //Draw Dragged Shape
+            this.selected_shape.transformPoints(this.old_point, this.new_point);
+            this.drawShape(this.front_canvas_context, this.selected_shape);
+            this.old_point = point;
+        }
+    }
+
+    OnMouseUpDrag(event, point) {
+        Log.trace("Scene::OnMouseUpDrag()");
+        //Save Shape Path New Points
+        this.selected_shape.transformPoints(this.old_point, this.new_point);
+        this.selected_shape.switchStrokeOff();
+        //Draw Scene
+        this.draw();
+        this.selected_shape = null;
+    }
+
+    OnMouseDownResize(event, point) {
+        Log.trace("Scene::OnMouseDownResize()");
+        if (this.isMotionMode(Scene.RESIZE) == false) {
+            return;
+        }
+        this.old_point = this.new_point = point;
+
+        //Draw Back Canvas Without selected shape;
+        if (this.selected_shape != null && this.selected_shape.isPointInside(point)) {
+            this.drawBackBuffer();
+        }
+    }
+
+    OnMouseMoveResize(event, point) {
+        Log.trace("Scene::OnMouseMoveResize()");
+        if (this.selected_shape.canClip(this.old_point, point) == true) {
+            //Save New Point
+            this.new_point = point;
+            //Draw Back Canvas
+            this.front_canvas_context.drawImage(this.back_canvas, 0, 0);
+            //Move Shape Path Points
+            //Draw Dragged Shape
+            this.selected_shape.transformPoints(this.old_point, this.new_point);
+            this.drawShape(this.front_canvas_context, this.selected_shape);
+            this.old_point = point;
+        }
+    }
+
+    OnMouseUpResize(event, point) {
+        Log.trace("Scene::OnMouseUpResize()");
+        //Save Shape Path New Points
+        this.selected_shape.transformPoints(this.old_point, this.new_point);
+        this.selected_shape.switchStrokeOff();
+        //Draw Scene
+        this.draw();
+        this.selected_shape = null;
     }
     
-    OnMouseDownRotate(event, thisis) {
-        Log.info("isRotating = " + thisis.isRotating);
-        if (thisis.isRotating == true) {
+    OnMouseDownRotate(event, point) {
+        Log.trace("Scene::OnMouseDownRotate()");
+        if (this.isMotionMode(Scene.ROTATE) == false) {
             return;
         }
-        let point = new Point();
-        point.x = event.pageX - thisis.CanvasBoundingRect.left;
-        point.y = event.pageY - thisis.CanvasBoundingRect.top;
-        thisis.oldPoint = thisis.newPoint = point;
-        for (let i = thisis.shapes.length - 1; i >= 0; i--) {
-            if (thisis.shapes[i].isPointInside(point)) {
-                thisis.execludedShape = thisis.shapes[i];
-                Log.info("In Shape [" + thisis.shapes[i].id + "] (" + point.x + ", " + point.y + ")");
-                break;
-            }
-        }
+        this.old_point = this.new_point = point;
+
         //Draw Back Canvas Without selected shape;
-        if (thisis.execludedShape != null) {
-            thisis.isRotating = true;
-            thisis.drawExecludeShape();
+        if (this.selected_shape != null && this.selected_shape.isPointInside(point)) {
+            this.drawBackBuffer();
         }
     }
 
-    OnMouseMoveRotate(event, thisis) {
-        if (thisis.isRotating === true) {
+    OnMouseMoveRotate(event, point) {
+        Log.trace("Scene::OnMouseMoveRotate()");
+        if (this.selected_shape.canClip(this.old_point, point) == true) {
             //Save New Point
-            let point = new Point();
-            point.x = event.pageX - thisis.CanvasBoundingRect.left;
-            point.y = event.pageY - thisis.CanvasBoundingRect.top;
-            if (thisis.execludedShape.canClip(thisis.oldPoint, point) == true) {
-                thisis.newPoint = point;
-                //Draw Back Canvas
-                thisis.front_canvas_context.drawImage(thisis.back_canvas, 0, 0);
-                //Move Shape Path Points
-                //Draw Dragged Shape
-                thisis.execludedShape.rotatePoints(thisis.oldPoint, thisis.newPoint);
-                thisis.drawShape(thisis.execludedShape);
-                thisis.oldPoint = point;
-            }
+            this.new_point = point;
+            //Draw Back Canvas
+            this.front_canvas_context.drawImage(this.back_canvas, 0, 0);
+            //Move Shape Path Points
+            //Draw Dragged Shape
+            this.selected_shape.rotatePoints(this.old_point, this.new_point);
+            this.drawShape(this.front_canvas_context, this.selected_shape);
+            this.old_point = point;
         }
     }
 
-    OnMouseUpRotate(event, thisis) {
-        if (thisis.isRotating === true) {
-            //Save Shape Path New Points
-            thisis.execludedShape.rotatePoints(thisis.oldPoint, thisis.newPoint);
-            //Draw Scene
-            thisis.draw();
-            thisis.execludedShape = null;
-        }
-
-        thisis.isRotating = false;
+    OnMouseUpRotate(event, point) {
+        Log.trace("Scene::OnMouseUpRotate()");
+        //Save Shape Path New Points
+        this.selected_shape.rotatePoints(this.old_point, this.new_point);
+        //this.drawShape(this.front_canvas_context, this.selected_shape);
+        //Draw Scene
+        this.cleanFrontBuffer();
+        this.draw();
+        this.selected_shape = null;
     }
 
-    OnMouseDown(event, thisis) {
-        //this.OnMouseDownTransform(event, thisis);
-        this.OnMouseDownRotate(event, thisis);
-    }
-
-    OnMouseMove(event, thisis) {
-        //this.OnMouseMoveTransform(event, thisis);
-        this.OnMouseMoveRotate(event, thisis);
-    }
-
-    OnMouseUp(event, thisis) {
-        //this.OnMouseUpTransform(event, thisis);
-        this.OnMouseUpRotate(event, thisis);
-    }
+    
 }
