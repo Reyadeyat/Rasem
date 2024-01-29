@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,25 +15,11 @@
  * limitations under the License.
  */
 
-export class Radian {
-	constructor() {
-		this.radians = [];
-        for (let degrees = 0; degrees <= 360; degrees++) {
-			this.radians[degrees] = degrees * Math.PI / 180;
-		}
+export class Color {
+    constructor(red, green, blue) {
+        this.red = red;
+        this.green = green;
+        this.blue = blue;
+        this.alfa = 255;
     }
-}
-
-export class Rectangle_2D {
-	constructor(x1, y1, x2, y2) {
-		this.x1 = x1;
-		this.y1 = y1;
-		this.x2 = x2;
-		this.y2 = y2;
-
-		this.x = x1;
-		this.y = y1;
-		this.width = x2 - x1;
-		this.height = y2 - y1;
-	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -60,8 +60,9 @@ export class ShapeControlRotate extends ShapeControl {
 
 export class ShapeControlGroup {
 
-    constructor(shape) {
+    constructor(shape, control_width) {
         this.shape = shape;
+        this.control_width = Math.floor(control_width / 2);
         this.mouse_click = false;
         this.mouse_down = false;
         this.control_point_shape_list = [];
@@ -78,17 +79,17 @@ export class ShapeControlGroup {
     getControlOnPoint(point) {
         return this.control_point_shape_list.find(control => {
             if (control.is(ShapeControl.RESIZE)) {
-                if (point.x >= control.control_point.x
-                    && point.x <= control.control_point.x
-                    && point.y >= control.control_point.y
-                    && point.y <= control.control_point.y
+                if (point.x >= control.control_point.x - this.control_width
+                    && point.x <= control.control_point.x + this.control_width
+                    && point.y >= control.control_point.y - this.control_width
+                    && point.y <= control.control_point.y + this.control_width
                 ) {
                         return true;
                     }
                     return false;
             } else if (control.is(ShapeControl.ROTATE)) {
                 let distance = Math.sqrt(Math.pow(control.control_point.x - point.x,2) + Math.pow(control.control_point.y - point.y, 2)); 
-                if (distance <= 5) {
+                if (distance <= this.control_width) {
                     return true;
                 }
                 return false;
@@ -97,11 +98,12 @@ export class ShapeControlGroup {
     }
 
     drawControls(context) {
+        context.save();
         this.control_point_shape_list.forEach(control => {
             if (control.is(ShapeControl.RESIZE)) {
-                let point_A = new Point(control.control_point.x - 5, control.control_point.y - 5);
+                let point_A = new Point(control.control_point.x - this.control_width, control.control_point.y - this.control_width);
                 context.beginPath();
-                context.rect(point_A.x, point_A.y, 10, 10);
+                context.rect(point_A.x, point_A.y, this.control_width * 2, this.control_width * 2);
                 context.fillStyle = control.fill_color;
                 context.fill();
                 context.lineWidth = 1;
@@ -109,7 +111,7 @@ export class ShapeControlGroup {
                 context.stroke();
             } else if (control.is(ShapeControl.ROTATE)) {
                 context.beginPath();
-                context.arc(control.control_point.x, control.control_point.y, 5, 0, 2 * Math.PI);
+                context.arc(control.control_point.x, control.control_point.y, this.control_width, 0, 2 * Math.PI);
                 context.fillStyle = control.fill_color;
                 context.fill();
                 context.lineWidth = 1;
@@ -118,7 +120,8 @@ export class ShapeControlGroup {
             } else {
                 throw new Error("Control of type '" + control.control_type + "' is unknown");
             }
-        })
+        });
+        context.restore();
     }
 
     OnMouseClick(point) {

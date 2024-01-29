@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -18,83 +18,83 @@
 export class Log {
     
     static FATAL = 990;
-    static fatal(msg) {
+    static fatal(msg, ...args) {
         if (Log.log_level > Log.FATAL) {
             return;
         }
-        console.info("FATAL: " + msg);
+        console.info("FATAL: " + msg + Log.dump(...args));
     }
     
     static ERROR = 890;
-    static error(msg) {
+    static error(msg, ...args) {
         if (Log.log_level > Log.ERROR) {
             return;
         }
-        console.info("ERROR: " + msg);
+        console.info("ERROR: " + msg + Log.dump(...args));
     }
     
     static WARNING = 790;
-    static warning(msg) {
+    static warning(msg, ...args) {
         if (Log.log_level > Log.WARNING) {
             return;
         }
-        console.info("WARNING: " + msg);
+        console.info("WARNING: " + msg + Log.dump(...args));
     }
     
     static INFO = 690;
-    static info(msg) {
+    static info(msg, ...args) {
         if (Log.log_level > Log.INFO) {
             return;
         }
-        console.info("INFO: " + msg);
+        console.info("INFO: " + msg + Log.dump(...args));
     }
 
     static DEBUG = 590;
-    static debug(msg) {
+    static debug(msg, ...args) {
         if (Log.log_level > Log.DEBUG) {
             return;
         }
-        console.info("DEBUG: " + msg);
+        console.info("DEBUG: " + msg + Log.dump(...args));
     }
     
     static DEBUG_LOGIC = 580;
-    static debug_logic(msg) {
+    static debug_logic(msg, ...args) {
         if (Log.log_level > Log.DEBUG_LOGIC) {
             return;
         }
-        console.info("DEBUG_LOGIC: " + msg);
+        console.info("DEBUG_LOGIC: " + msg + Log.dump(...args));
     }
     
     static DEBUG_DATA = 570;
-    static debug_data(msg) {
+    static debug_data(msg, ...args) {
         if (Log.log_level > Log.DEBUG_DATA) {
             return;
         }
-        console.info("DEBUG_DATA: " + msg);
+        console.info("DEBUG_DATA: " + msg + Log.dump(...args));
     }
     
     static TRACE = 490;
-    static trace(msg) {
+    static trace(msg, ...args) {
         if (Log.log_level > Log.TRACE) {
             return;
         }
-        console.info("TRACE: " + msg);
+        console.info("TRACE: " + msg + Log.dump(...args));
     }
     
     static TRACE_LOGIC = 480;
-    static trace_logic(msg) {
+    static trace_logic(msg, ...args) {
         if (Log.log_level > Log.TRACE_LOGIC) {
             return;
         }
-        console.info("TRACE_LOGIC: " + msg);
+        console.info("TRACE_LOGIC: " + msg + Log.dump(...args));
     }
     
     static TRACE_DATA = 470;
-    static trace_data(msg) {
+    static trace_data(msg, ...args) {
         if (Log.log_level > Log.TRACE_DATA) {
             return;
         }
-        console.info("TRACE_DATA: " + msg);
+        console.info("TRACE_DATA: " + msg + Log.dump(...args));
     }
 
     static log_level = Log.info;
@@ -124,5 +124,17 @@ export class Log {
 
     static setLogLevel(log_level_name) {
         Log.log_level = Log.getLogLevel(log_level_name);       
+    }
+
+    static dump(...args) {
+        if (args == null || args.length == 0) {
+            return "";
+        }
+        let obj = {};
+        let key = args[0].split(",");
+        for (let i = 1; i < args.length; i++) {
+            obj[key[i-1].trim()] = args[i];
+        }
+        return JSON.stringify(obj);
     }
 }

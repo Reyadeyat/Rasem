@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,19 +15,19 @@
  * limitations under the License.
  */
 
-export class Point {
-    /*x;
-    y;*/
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    moveTo(context) {
-        context.moveTo(this.x, this.y);
-    }
-
-    lineTo(context) {
-        context.lineTo(this.x, this.y);
+export class Algorithms {
+    static list_difference(minor_list, major_list) {
+        if (major_list == null || major_list.length == 0
+            || minor_list == null || minor_list.length == 0) {
+            return [];
+        }
+        let list = [];
+        major_list.forEach(major_element => {
+            let found = minor_list.some(minor_element => major_element.id == minor_element.id);
+            if (found == false) {
+                list.push(major_element);
+            }
+        });
+        return list;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,17 +15,18 @@
  * limitations under the License.
  */
 
-import { Log } from './log.js'
+import { Log } from '../util/log.js'
 import { Shape } from './shape.js'
 import { Point } from './point.js'
 import { Edge } from './edge.js'
-import { Radian } from './geometry.js'
+import { Radian } from '../math/geometry.js'
 import { ShapeControl, ShapeControlGroup } from './control.js'
+import { Vector2D } from '../math/linear_algebra.js'
 
 export class Rectangle extends Shape {
     
-    constructor(id, stroke_style, fill_style, clip_x, clip_y, left_x, top_y, width, height) {
-        super("Rectangle", id, stroke_style, fill_style, clip_x, clip_y,
+    constructor(id, stroke_style, fill_style, left_x, top_y, width, height, text, control_width) {
+        super("Rectangle", id, stroke_style, fill_style,
             {center: new Point(left_x + (width / 2), top_y + (height / 2)), 
                 width: width, height: height,
                 half_width: width/2,
@@ -33,12 +34,17 @@ export class Rectangle extends Shape {
                 radius: Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2)) / 2,
                 //radius_x: Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2)) / 2,
                 //radius_y: Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2)) / 2,
-                rotation_angle: 0});
+                rotation_angle: 0},
+            text,
+            control_width);
     }
 
     generatePathPoints() {
         this.shape_path_points = [];
         this.shape_path_edges = [];
+
+        this.x = this.center.x - this.half_width;
+        this.y = this.center.y - this.half_height;
 
         this.shape_path_points = [
             //point_x_y
@@ -63,30 +69,22 @@ export class Rectangle extends Shape {
         return false;
     }
 
-    isPointInsideResizeControl(point) {
-        let control = this.shape_control_group.getControlOnPoint(point);
-        return control != null && control.is(ShapeControl.RESIZE);
-    }
-
-    isPointInsideRotateControl(point) {
-        let control = this.shape_control_group.getControlOnPoint(point);
-        return control != null && control.is(ShapeControl.ROTATE);
+    dragPoints(old_point, new_point) {
+        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
+        this.generatePath();
     }
 
     transformPoints(old_point, new_point) {
         this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
-        this.generatePathPoints();
+        this.generatePath();
     }
 
-    draw(context) {
-        super.draw(context);
-        if (Log.is(Log.TRACE_DATA)) {
-            let radius_a = this.radius;
-            context.strokeStyle = this.stroke_style.color;
-            context.beginPath();
-            context.arc(this.center.x, this.center.y, radius_a, 0, 2 * Math.PI);
-            context.stroke();
-        }
+    preDraw(context) {
+
+    }
+
+    postDraw(context) {
+
     }
 
     scalePoints(old_point, new_point) {
@@ -114,23 +112,6 @@ export class Rectangle extends Shape {
         this.rotation_angle = angle;
 
         this.shape_path_edges = Edge.doEdges(this.shape_path_points, Edge.line, true);
-    }
-
-    canClip(old_point, new_point) {
-        let point_x_y = this.shape_path_points[0];
-        let min_point = new Point(point_x_y.x + new_point.x - old_point.x, point_x_y.y + new_point.y - old_point.y);
-        let max_point = new Point(min_point.x+this.width, min_point.y+this.height);
-        
-        return this.clipController(min_point, max_point, new_point);
-    }
-
-    activateControls(context) {
-        this.shape_control_group = new ShapeControlGroup(this);
-        this.shape_path_points.forEach(point => {
-            this.shape_control_group.addShapeControl(ShapeControl.RESIZE, point, "grey", "white");
-        });
-        this.shape_control_group.addShapeControl(ShapeControl.ROTATE, this.center, "yellow", "green");
-        this.shape_control_group.drawControls(context);
     }
 
     refreshShape(point) {

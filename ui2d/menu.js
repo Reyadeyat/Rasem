@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-import { Log } from "./log";
-import { Point } from "./point";
+import { Log } from "../util/log";
+import { Point } from "../g2d/point";
 
 export class RasemMenu {
 
@@ -73,7 +73,8 @@ export class RasemMenu {
         rasem_scene.front_canvas.addEventListener("contextmenu", function (event) {
             const x = event.clientX;
             const y = event.clientY;
-            const point = new Point(event.pageX - rasem_scene.CanvasBoundingRect.left, event.pageY - rasem_scene.CanvasBoundingRect.top);
+            const front_canvas_bounding_rect = rasem_scene.getFrontCanvasBoundingRect();
+            const point = new Point(event.pageX - front_canvas_bounding_rect.left, event.pageY - front_canvas_bounding_rect.top);
             let shape_list = rasem_scene.getShapesUnderPoint(point);
             rasem_menu.setOptionList(shape_list);
             event.preventDefault();
@@ -87,7 +88,8 @@ export class RasemMenu {
         rasem_scene.front_canvas.addEventListener("click", function (event) {
             const x = event.clientX;
             const y = event.clientY;
-            const point = new Point(event.pageX - rasem_scene.CanvasBoundingRect.left, event.pageY - rasem_scene.CanvasBoundingRect.top);
+            const front_canvas_bounding_rect = rasem_scene.getFrontCanvasBoundingRect();
+            const point = new Point(event.pageX - front_canvas_bounding_rect.left, event.pageY - front_canvas_bounding_rect.top);
             let shape_list = rasem_scene.getShapesUnderPoint(point);
             if (shape_list.length < 2) {
                 rasem_menu.menu.style.display = "none";

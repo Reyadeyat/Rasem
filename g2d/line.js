@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-import { Log } from './log.js'
-import { Color } from './color.js'
+import { Log } from '../util/log.js'
+import { Color } from '../util/color.js'
 import { Point } from './point.js'
 import { Shape } from './shape.js'
 import { Edge } from './edge.js'
-import { Radian } from './geometry.js'
+import { Radian } from '../math/geometry.js'
 import { ShapeControl, ShapeControlGroup } from './control.js'
 
 export class Line extends Shape {
 
-    constructor(id, stroke_style, fill_style, clip_x, clip_y, point_A, point_B) {
-        super("Line", id, stroke_style, fill_style, clip_x, clip_y, 
+    constructor(id, stroke_style, fill_style, point_A, point_B, text, control_width) {
+        super("Line", id, stroke_style, fill_style,
             {   center: new Point((point_A.x + point_B.x) / 2, (point_A.y + point_B.y) / 2),
                 distance: Math.sqrt(Math.pow(point_B.x - point_A.x, 2) + Math.pow(point_B.y - point_A.y, 2)) / 2,
                 radius: Math.sqrt(Math.pow(point_B.x - point_A.x, 2) + Math.pow(point_B.y - point_A.y, 2)) / 2,
@@ -34,7 +34,9 @@ export class Line extends Shape {
                 delta: new Point(0, 0),
                 point_A: point_A,
                 point_B: point_B
-            });
+            },
+            text,
+            control_width);
     }
 
     generatePathPoints() {
@@ -67,23 +69,26 @@ export class Line extends Shape {
         return Math.abs(point.y - y) < 4;//< Number.EPSILON;
     }
 
+    dragPoints(old_point, new_point) {
+        this.delta.x = new_point.x - old_point.x;
+        this.delta.y = new_point.y - old_point.y;
+        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
+        this.generatePath();
+    }
+
     transformPoints(old_point, new_point) {
         this.delta.x = new_point.x - old_point.x;
         this.delta.y = new_point.y - old_point.y;
         this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
-        this.generatePathPoints();
+        this.generatePath();
     }
 
-    draw(context) {
-        super.draw(context);
-        if (Log.is(Log.TRACE_DATA)) {
-            let radius_a = this.radius;
-            context.strokeStyle = this.stroke_style.color;
-            context.beginPath();
-            context.arc(this.center.x, this.center.y, radius_a, 0, 2 * Math.PI);
-            context.stroke();
-        }
-        
+    preDraw(context) {
+
+    }
+
+    postDraw(context) {
+    
         /*let red = new Color(255,0,0);
         let p1 = this.shape_path_points[0];
         let p2 = this.shape_path_points[1];
@@ -191,24 +196,6 @@ export class Line extends Shape {
 
     rotatePoints(old_point, new_point) {
         
-    }
-
-    canClip(old_point, new_point) {
-        let xv = new_point.x - old_point.x;
-        let yv = new_point.y - old_point.y;
-        let min_point = new Point(Math.min(this.point_A.x + xv, this.point_B.x + xv), Math.min(this.point_A.y + yv, this.point_B.y + yv));
-        let max_point = new Point(Math.max(this.point_A.x + xv, this.point_B.x + xv), Math.max(this.point_A.y + yv, this.point_B.y + yv));
-
-        return this.clipController(min_point, max_point, new_point);
-    }
-
-    activateControls(context) {
-        this.shape_control_group = new ShapeControlGroup(this);
-        this.shape_path_points.forEach(point => {
-            this.shape_control_group.addShapeControl(ShapeControl.RESIZE, point, "grey", "white");
-        });
-        this.shape_control_group.addShapeControl(ShapeControl.ROTATE, this.center, "yellow", "green");
-        this.shape_control_group.drawControls(context);
     }
 
     refreshShape(point) {

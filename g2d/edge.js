@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { Log } from './log.js'
+import { Log } from '../util/log.js'
 
 export const line = 1;
 export const circular_curve = 1;
@@ -54,11 +54,11 @@ export class Edge {
         return edges_array;
     }
 
-    draw(context) {
-        if (this.type == Edge.line) {
-            context.moveTo(this.start_point.x, this.start_point.y);
-            context.lineTo(this.end_point.x, this.end_point.y);
-            Log.info("(" + this.start_point.x + ", " + this.start_point.y + ") - (" + this.end_point.x + ", " + this.end_point.y + ")");
-        }
+    preDraw(context) {
+
+    }
+
+    postDraw(context) {
+        
     }
 }

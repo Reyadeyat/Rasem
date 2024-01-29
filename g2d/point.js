@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,19 +15,27 @@
  * limitations under the License.
  */
 
-"use strict";
-
-import { Log } from './log.js'
-
-export class Paint {
-
-    constructor(log_level_name) {
-        Log.setLogLevel(log_level_name);
+export class Point {
+    /*x;
+    y;*/
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
     }
 
-    
-    /* process.*/
+    moveTo(context) {
+        context.moveTo(this.x, this.y);
+    }
 
-    draw() {};
+    lineTo(context) {
+        context.lineTo(this.x, this.y);
+    }
 
+    pathMoveTo(path2d) {
+        path2d.moveTo(this.x, this.y);
+    }
+
+    pathLineTo(path2d) {
+        path2d.lineTo(this.x, this.y);
+    }
 }

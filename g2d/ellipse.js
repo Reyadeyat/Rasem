@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,18 +15,20 @@
  * limitations under the License.
  */
 
-import { Log } from './log.js'
+import { Log } from '../util/log.js'
 import { Shape } from './shape.js'
 import { Point } from './point.js'
 import { Edge } from './edge.js'
-import { Radian } from './geometry.js'
+import { Radian } from '../math/geometry.js'
 import { ShapeControl, ShapeControlGroup } from './control.js'
 
 export class Ellipse extends Shape {
     
-    constructor(id, stroke_style, fill_style, clip_x, clip_y, center_x, center_y, radius_x, radius_y) {
-        super("Ellipse", id, stroke_style, fill_style, clip_x, clip_y,
-            {center: new Point(center_x, center_y), radius_x: radius_x, radius_y: radius_y});
+    constructor(id, stroke_style, fill_style, center_x, center_y, radius_x, radius_y, text, control_width) {
+        super("Ellipse", id, stroke_style, fill_style,
+            {center: new Point(center_x, center_y), radius_x: radius_x, radius_y: radius_y},
+            text,
+            control_width);
     }
 
     generatePathPoints() {
@@ -75,20 +77,22 @@ export class Ellipse extends Shape {
         return false;
     }
 
+    dragPoints(old_point, new_point) {
+        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
+        this.generatePath();
+    }
+    
     transformPoints(old_point, new_point) {
         this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
-        this.generatePathPoints();
+        this.generatePath();
     }
 
-    draw(context) {
-        super.draw(context);
-        if (Log.is(Log.TRACE_DATA)) {
-            let radius_a = this.radius;
-            context.strokeStyle = this.stroke_style.color;
-            context.beginPath();
-            context.arc(this.center.x, this.center.y, radius_a, 0, 2 * Math.PI);
-            context.stroke();
-        }
+    preDraw(context) {
+
+    }
+
+    postDraw(context) {
+
     }
 
     scalePoints(old_point, new_point) {
@@ -116,22 +120,6 @@ export class Ellipse extends Shape {
         this.rotation_angle = angle;
 
         this.shape_path_edges = Edge.doEdges(this.shape_path_points, Edge.line, true);
-    }
-
-    canClip(old_point, new_point) {
-        let min_point = new Point(this.center.x - this.radius_x + new_point.x - old_point.x, this.center.y - this.radius_y + new_point.y - old_point.y);
-        let max_point = new Point(min_point.x + (this.radius_x * 2), min_point.y + (this.radius_y * 2));
-
-        return this.clipController(min_point, max_point, new_point);
-    }
-
-    activateControls(context) {
-        this.shape_control_group = new ShapeControlGroup(this);
-        this.shape_path_points.forEach(point => {
-            this.shape_control_group.addShapeControl(ShapeControl.RESIZE, point, "grey", "white");
-        });
-        this.shape_control_group.addShapeControl(ShapeControl.ROTATE, this.center, "yellow", "green");
-        this.shape_control_group.drawControls(context);
     }
 
     refreshShape(point) {

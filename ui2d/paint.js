@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Reyadeyat
+ * Copyright (C) 2023 - 2024 Reyadeyat
  *
  * Reyadeyat/Rasem is licensed under the
  * BSD 3-Clause "New" or "Revised" License
@@ -15,11 +15,19 @@
  * limitations under the License.
  */
 
-export class Color {
-    constructor(red, green, blue) {
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
-        this.alfa = 255;
+"use strict";
+
+import { Log } from '../util/log.js'
+
+export class Paint {
+
+    constructor(log_level_name) {
+        Log.setLogLevel(log_level_name);
     }
+
+    
+    /* process.*/
+
+    draw() {};
+
 }
