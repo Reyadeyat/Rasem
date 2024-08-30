@@ -1,4 +1,4 @@
-#Bugs Fixed on version 0.0.2
+#Rasem Bug Report on version 0.0.3
 - when multi shape select treat them as one big shape - solved
 - when mouse exit context current operation is not canceled, now when mouse exit mouse is up - solved
 - save rotation/transformations state

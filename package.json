@@ -2,11 +2,13 @@
   "name": "@reyadeyat/rasem",
   "version": "0.0.1",
   "description": "Rasem - Reyadeyat Mathematics visualization in vanilla Javascript",
+  "type": "module",
   "main": "index.js",
   "module": "index.js",
-  "types": "./types/index.d.ts",
+  "types": "type/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -22,15 +24,18 @@
     "Javascript"
   ],
   "author": "Mohammad Nabil Mostafa <coder@mnabil.net>",
-  "license": "SEE LICENSE IN <https://reyadeyat.net/LICENSE/RASEM.LICENSE>",
+  "license": "SEE LICENSE IN <https://reyadeyat.net/REYADEYAT.LICENSE>",
   "bugs": {
     "url": "https://github.com/Reyadeyat/Rasem/issues"
   },
   "homepage": "https://github.com/Reyadeyat/Rasem#readme",
   "devDependencies": {
-    "npx": "^10.2.2",
     "typescript": "~5.1.3"
   },
-  "dependencies": {
-  }
+  "peerDependencies": {
+    "@reyadeyat/haseb": "file:../Haseb/reyadeyat-haseb-0.0.7.tgz"
+  },
+  "bundleDependencies": [
+    "@reyadeyat/haseb"
+  ]
 }

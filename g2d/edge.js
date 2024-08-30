@@ -1,32 +1,24 @@
 /*
- * Copyright (C) 2023 - 2024 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
-import { Log } from '../util/log.js'
+"use strict";
 
-export const line = 1;
-export const circular_curve = 1;
-export const eleptic_curve = 1;
-export const bezier_curve = 1;
+export class EdgeType {
+    static get line_connector() {return 1};
+    static get circular_curve_connector() {return 2};
+    static get eleptic_curve_connector() {return 3};
+    static get bezier_curve_connector() {return 4};
+}
 
 export class Edge {
-    /*static line = 1;
-    static circular_curve = 1;
-    static eleptic_curve = 1;
-    static bezier_curve = 1;*/
     /*type;
     start_point;
     end_point;

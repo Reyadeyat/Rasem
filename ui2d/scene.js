@@ -1,26 +1,27 @@
 /*
- * Copyright (C) 2023 - 2024 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
+"use strict";
+
+import { Log } from '@reyadeyat/haseb'
 import { Algorithms } from '../math/algorithms.js';
-import { Log } from '../util/log.js'
 import { RasemMenu } from './menu.js';
 import { Point } from '../g2d/point.js'
 import { Tooltip } from '../g2d/tooltip.js';
-import { Rectangle_2D } from '../math/geometry.js';
+import { Geometry, Rectangle_2D } from '../math/geometry.js';
+import { UIToolbar } from '../ui/ui-toolbar.js';
+import { Rectangle } from '../g2d/rectangle.js';
+import { ShapeUtils } from '../g2d/shape_utils.js';
+import { Vector2D } from '../math/linear_algebra.js';
+import { UITree } from '../ui/ui-tree.js';
 
 export class Scene {
 
@@ -31,34 +32,47 @@ export class Scene {
     static ROTATE = 40;
     static END = 500;
 
-    constructor(canvas_container_id, fore_color, back_color, width, height) {
+    constructor(configuration, scene_container_id, status_bar_id, height_reduction, fore_color, back_color, control_width, dpi, ppi, width, height, handle_control_event) {
         Log.trace("Scene::constructor()");
-        const el = document.createElement('div');
-        el.style = 'width: 1in;'
-        document.body.appendChild(el);
-        this.dpi = el.offsetWidth;
-        document.body.removeChild(el);
-        this.ppir = window.devicePixelRatio;
-        this.ppi = this.ppir * 96;
-        const page_width = 8.27;
-        const page_height = 11.69;
-        this.portrait_page = new Rectangle_2D(0, 0, Math.round(page_width*this.ppi), Math.round(page_height*this.ppi));
-        this.landescape_page = new Rectangle_2D(0, 0, Math.round(page_height*this.ppi), Math.round(page_width*this.ppi));
-        this.width = width != null && width != 0 ? Math.round(width*this.ppi) : this.portrait_page.width;
-        this.height = height != null && height != 0 ? Math.round(height*this.ppi) : this.portrait_page.height;
+        this.language = configuration.language;
+        this.dpi = dpi;
+        this.ppi = ppi;
+        this.width = width;
+        this.height = height;
+        this.portrait_page = new Rectangle_2D(0, 0, this.width, this.height * this.ppi);
+        this.landescape_page = new Rectangle_2D(0, 0, this.height, this.width * this.ppi);
         this.scene_width = this.width;
         this.scene_height = this.height;
-        let scene = this
         this.shape_list = [];
-        this.canvas_container_id = canvas_container_id;
-        this.canvas_container_element = document.getElementById(this.canvas_container_id);
+        this.shape_map = new Map();
+        this.scene_container_id = scene_container_id;
+        this.status_bar_id = status_bar_id;
+        this.height_reduction = height_reduction;
+        this.canvas_container_element = document.getElementById(this.scene_container_id);
+        this.control_width = control_width;
+        this.rasem_side_toolbar = new UIToolbar(configuration.language, configuration.direction, configuration.rasem_side_toolbar, this.canvas_container_element);
+
+        this.scene_container_board = document.createElement('div');
+        this.scene_container_board.id = scene_container_id + '_scene_board_' + Math.random();
+        this.scene_container_board.innerHTML = ``;
+        this.scene_container_board.classList.add("rasem_scene_board");
+        this.canvas_container_element.appendChild(this.scene_container_board);
+
         this.front_canvas = document.createElement('canvas');
         this.rasem_menu = new RasemMenu(this);
-        this.front_canvas.id = canvas_container_id+'_canvas';
-        this.canvas_container_element.appendChild(this.front_canvas);
-        //canvas.style.zIndex = 8;
-        //canvas.style.position = "absolute";
-        //canvas.style.border = "1px solid";
+        this.front_canvas.id = scene_container_id + '_canvas';
+        this.front_canvas.classList.add("rasem_canvas");
+        this.front_canvas.tabIndex = 100;
+        this.front_canvas.style.width = this.width + "px";
+        this.front_canvas.style.min_width = this.width + "px";
+        this.scene_container_board.appendChild(this.front_canvas);
+
+        this.ui_tree = new UITree(configuration.language, configuration.direction, configuration.tree, configuration.tree_map, configuration.tree_inlisted, configuration.tree_toolbar, this.canvas_container_element, this.height);
+        this.is_full_screen_mode = false;
+        window.addEventListener('resize', (event) => {
+            this.fixHeight();
+        });
+
         this.front_canvas_context = this.front_canvas.getContext('2d');
         this.front_canvas_context_pixels = this.front_canvas_context.createImageData(this.width, this.height);
         this.front_canvas.width = this.width;
@@ -66,71 +80,100 @@ export class Scene {
 
         this.selected_shape_list = [];
 
-        this.front_canvas.addEventListener('mousedown', function (event) {
-            let point = scene.getPoint(event);
-            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"'] - Pre Init");
-            scene.cancelHovering();
-            if (scene.isMotionMode(Scene.NONE) == true) {
+        this.front_canvas.addEventListener('mousedown', (event) => {
+            this.front_canvas.focus();
+            let point = this.getPoint(event);
+            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "'] - Pre Init");
+            this.cancelHovering();
+            if (this.isInShape(event, point) == false) {
+                Log.trace("Scene::constructor::front_canvas::mousedown::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "] - click on board");
+                this.click_on_board = true;
+            }
+            if (this.isMotionMode(Scene.NONE) == true) {
                 return;
             }
-            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"'] - Post Init");
-            scene.OnMouseDown(event, point);
-            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"'] - Done");
+            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "'] - Post Init");
+            this.OnMouseDown(event, point);
+            Log.trace("Scene::constructor::front_canvas::mouse_down()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "'] - Done");
         }, false);
 
-        this.front_canvas.addEventListener('mousemove', function (event) {
-            let point = scene.getPoint(event);
-            if (scene.isMotionMode(Scene.NONE) == true || scene.isMotionMode(Scene.HOVER) == true) {
-                let hovered_shape = scene.isHoveringShape(event, point)
+        this.front_canvas.addEventListener('mousemove', (event) => {
+            let point = this.getPoint(event);
+            if (this.isMotionMode(Scene.NONE) == true || this.isMotionMode(Scene.HOVER) == true) {
+                let hovered_shape = this.isHoveringShape(event, point)
                 if (hovered_shape != null) {
-                    if (scene.isMotionMode(Scene.NONE) == true) {
-                        Log.trace("Scene::OnMouseMove()::motion_mode["+Scene.getMotionModeName(scene.motion_mode)+"] - hovered_shape != null -> In-HOVER mode");
-                        scene.activateHovering(hovered_shape);
-                    } else if (scene.isMotionMode(Scene.HOVE) == true) {
-                        Log.trace("Scene::OnMouseMove()::motion_mode["+Scene.getMotionModeName(scene.motion_mode)+"] - hovered_shape != null -> Re-HOVER mode");
-                        scene.activateHovering(hovered_shape);
+                    if (this.isMotionMode(Scene.NONE) == true) {
+                        Log.trace("Scene::OnMouseMove()::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "] - hovered_shape != null -> In-HOVER mode");
+                        this.activateHovering(hovered_shape);
+                    } else if (this.isMotionMode(Scene.HOVE) == true) {
+                        Log.trace("Scene::OnMouseMove()::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "] - hovered_shape != null -> Re-HOVER mode");
+                        this.activateHovering(hovered_shape);
                     }
                 } else {
-                    scene.cancelHovering();
+                    this.cancelHovering();
                 }
             }
-            if (scene.isMotionMode(Scene.NONE) == true) {
+            if (this.isMotionMode(Scene.NONE) == true) {
                 return;
             }
-            Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
-            scene.OnMouseMove(event, point);
-        }, false);
-        
-        this.front_canvas.addEventListener('mouseup', function (event) {
-            Log.trace("Scene::constructor::front_canvas::mouse_up::motion_mode['"+Scene.getMotionModeName(scene.motion_mode)+"']");
-            let point = scene.getPoint(event);
-            if (scene.isInShape(event, point) == false) {
-                Log.trace("Scene::constructor::front_canvas::mouse_up::motion_mode["+Scene.getMotionModeName(scene.motion_mode)+"] - selected_shape_list.length == 0 -> save return");
-                scene.deselectAllShapes();
-                return;
-            } else if (scene.selectShape(event, point) == true) {
-                scene.drawUnselectedShapesToBackBuffer();
-            }
-            if (scene.isMotionMode(Scene.NONE) == true) {
-                return;
-            }
-            scene.OnMouseUp(event, point);
+            Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "']");
+            this.OnMouseMove(event, point);
         }, false);
 
-        this.front_canvas.addEventListener('mouseenter', function(event) {
-            let point = scene.getPoint(event);
-            Log.trace("Scene::constructor::front_canvas::mouse_enter::", "motion_mode, point", Scene.getMotionModeName(scene.motion_mode), point);
+        this.front_canvas.addEventListener('mouseup', (event) => {
+            Log.trace("Scene::constructor::front_canvas::mouse_up::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "']");
+            let point = this.getPoint(event);
+            if (this.click_on_board == true || this.isInShapeOrControl(event, point) == false) {
+                Log.trace("Scene::constructor::front_canvas::mouse_up::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "] - selected_shape_list.length == 0 -> save return");
+                this.click_on_board = false;
+                this.deselectAllShapes();
+                return;
+            } else if (this.selectShape(event, point) == true) {
+                this.drawUnselectedShapesToBackBuffer();
+            }
+            if (this.isMotionMode(Scene.NONE) == true) {
+                return;
+            }
+            this.OnMouseUp(event, point);
+        }, false);
+
+        this.front_canvas.addEventListener('mouseenter', (event) => {
+            let point = this.getPoint(event);
+            Log.trace("Scene::constructor::front_canvas::mouse_enter::", "motion_mode, point", Scene.getMotionModeName(this.motion_mode), point);
         });
 
-        this.front_canvas.addEventListener('mouseleave', function(event) {
-            let point = scene.getPoint(event);
-            Log.trace("Scene::constructor::front_canvas::mouse_leave::", "motion_mode, point", Scene.getMotionModeName(scene.motion_mode), point);
-            if (scene.isMotionMode(Scene.NONE) == true) {
+        this.front_canvas.addEventListener('mouseleave', (event) => {
+            let point = this.getPoint(event);
+            Log.trace("Scene::constructor::front_canvas::mouse_leave::", "motion_mode, point", Scene.getMotionModeName(this.motion_mode), point);
+            if (this.isMotionMode(Scene.NONE) == true) {
                 return;
             }
-            if (scene.selected_shape_list.length > 0) {
-                scene.OnMouseUp(event, point);
+            if (this.selected_shape_list.length > 0) {
+                this.OnMouseUp(event, point);
             }
+        });
+
+        this.front_canvas.addEventListener('keydown', (event) => {
+            if (event.key === 'a' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                this.selected_shape_list = this.shape_list.filter(shape => shape.selectable == true);
+                this.setSelectedShapes(this.selected_shape_list);
+            }
+        });
+
+        this.front_canvas.addEventListener('dragover', (event) => {
+            event.preventDefault();
+        });
+
+        this.front_canvas.addEventListener('drop', (event) => {
+            event.preventDefault();
+            let point = this.getPoint(event);
+            let source_node_id = parseInt(event.dataTransfer.getData('node.node_id'));
+            let shape_list = this.getShapesUnderPoint(point);
+            if (shape_list.length > 0) {
+                this.handle_control_event(event, 'scene', 'node_drop', { point: point, node_id: source_node_id, dropped_on_shape_id: shape_list[0].id });
+            }
+            debugger;
         });
 
         this.back_canvas = document.createElement('canvas');
@@ -142,10 +185,43 @@ export class Scene {
         this.back_color = back_color;
 
         this.switchMotionMode(Scene.NONE);
+
+        this.fixHeight();
     }
 
-    setOnRasemChangeCallBack(on_rasem_change_call_back) {
-        this.on_rasem_change_call_back = on_rasem_change_call_back;
+    changeLanguage(language, direction) {
+        this.language = language;
+        this.direction = direction;
+        this.ui_tree.changeLanguage(this.language, this.direction);
+        this.rasem_menu.changeLanguage(this.language, this.direction);
+        this.rasem_side_toolbar.changeLanguage(this.language, this.direction);
+    }
+
+    fixHeight() {
+        this.updateFrontCanvasBoundingRect();
+        let new_height = 0;
+        if (new_height == null || document.fullscreenElement != null) {
+            let rasem_container_toolbar = document.getElementById("rasem_container_toolbar");
+            let rasem_container_status_bar = this.status_bar_id == null ? null : document.getElementById(this.status_bar_id);
+            new_height = window.innerHeight - ((rasem_container_status_bar == null ? 0 : rasem_container_status_bar.offsetHeight) + rasem_container_toolbar.clientHeight + rasem_container_toolbar.offsetTop);
+        } else {
+            new_height = window.innerHeight - this.height_reduction;
+        }
+        let scene_container_element = document.getElementById(this.scene_container_id);
+        if (scene_container_element != null) {
+            scene_container_element.style.maxHeight = "" + new_height + "px";
+            this.scene_container_board.style.maxHeight = "" + new_height + "px";
+            this.ui_tree.setHeight(new_height);
+            this.rasem_side_toolbar.setHeight(new_height);
+        }
+    }
+
+    getUITree() {
+        return this.shape_list;
+    }
+
+    setOnRasemChangeCallBack(on_rasem_change_callback) {
+        this.on_rasem_change_callback = on_rasem_change_callback;
     }
 
     updateFrontCanvasBoundingRect() {
@@ -158,15 +234,28 @@ export class Scene {
     }
 
     getPoint(event) {
-        let point = new Point();
-        this.front_canvas_bounding_rect = this.getFrontCanvasBoundingRect();
-        point.x = event.pageX - this.front_canvas_bounding_rect.left;
-        point.y = event.pageY - this.front_canvas_bounding_rect.top;
-        return point;
+        const rect = this.front_canvas.getBoundingClientRect();
+
+        const canvasScrollX = this.front_canvas.scrollLeft;
+        const canvasScrollY = this.front_canvas.scrollTop;
+        const documentScrollX = window.scrollX;
+        const documentScrollY = window.scrollY;
+
+        const x = event.clientX - rect.left - documentScrollX + canvasScrollX;
+        const y = event.clientY - rect.top - canvasScrollY;
+
+        if (this.front_canvas.style.transform) {
+            const matrix = this.front_canvas.transform.baseVal.getItem(0);
+            const scaleX = matrix.matrix.a;
+            const scaleY = matrix.matrix.d;
+            x /= scaleX;
+            y /= scaleY;
+        }
+        return new Point(x, y);
     }
 
     switchMotionMode(new_motion_mode) {
-        Log.trace("Scene::switchMotionMode()::["+Scene.getMotionModeName(this.motion_mode) + ", " + Scene.getMotionModeName(new_motion_mode)+"]");
+        Log.trace("Scene::switchMotionMode()::[" + Scene.getMotionModeName(this.motion_mode) + ", " + Scene.getMotionModeName(new_motion_mode) + "]");
         this.motion_mode = new_motion_mode;
     }
 
@@ -210,16 +299,20 @@ export class Scene {
         context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     }
 
-    addShape(shape) {
-        Log.trace("Scene::addShape()");
-        shape.setFrontDevice(this.front_canvas_context, this.front_canvas_context_pixels);
+    addShape(shape, draw_shape) {
+        Log.trace("Scene::addShape()::["+ shape.shape_type + ", " + draw_shape+"]");
         this.shape_list.push(shape);
+        if (draw_shape == true) {
+            shape.draw(this.language, this.front_canvas_context);
+        }
+        this.shape_map.set(shape.id, shape);
+        this.shape_list.sort((a, b) => a.order > b.order ? 1 : a.order < b.order ? -1 : 0);
     }
 
     draw() {
         Log.trace("Scene::draw()");
-        for (let i = this.shape_list.length-1; i >= 0; i--) {
-            this.shape_list[i].draw(this.front_canvas_context);
+        for (let i = 0; i < this.shape_list.length; i++) {
+            this.shape_list[i].draw(this.language, this.front_canvas_context);
         };
     }
 
@@ -235,17 +328,16 @@ export class Scene {
 
     restoreFrontBufferRectangleFromBackBuffer(shape) {
         Log.trace("Scene::restoreFrontBufferRectangleFromBackBuffer()::shape::" + shape.toString());
-        //this.front_canvas_context.drawImage(this.back_canvas, 0, 0);
         let portion = 1;
-        let rect = shape.shape_max_bound_rect;
-        this.front_canvas_context.drawImage(this.back_canvas, rect.x - portion, rect.y - portion, rect.width + (portion * 2), rect.height + (portion * 2), rect.x - portion, rect.y - portion, rect.width + (portion * 2), rect.height + (portion * 2));
+        let rect = shape.shape_clean_bound_rect;
+        this.front_canvas_context.drawImage(this.back_canvas, rect.left_top_point.x - portion, rect.left_top_point.y - portion, rect.width + (portion * 2), rect.height + (portion * 2), rect.left_top_point.x - portion, rect.left_top_point.y - portion, rect.width + (portion * 2), rect.height + (portion * 2));
     }
 
     redrawOnBackBuffer() {
         Log.trace("Scene::redrawOnBackBuffer()");
         this.clean(this.back_canvas_context);
         for (let i = 0; i < this.shape_list.length; i++) {
-            this.shape_list[i].draw(this.back_canvas_context);
+            this.shape_list[i].draw(this.language, this.back_canvas_context);
         };
     }
 
@@ -253,10 +345,10 @@ export class Scene {
         Log.trace("Scene::drawUnselectedShapesToBackBuffer()");
         this.clean(this.back_canvas_context);
         let unselected_shape_list = Algorithms.list_difference(this.selected_shape_list, this.shape_list);
-        for (let i = unselected_shape_list.length-1; i >=0 ; i--) {
+        for (let i = 0; i < unselected_shape_list.length; i++) {
             let shape = unselected_shape_list[i];
-            Log.info("selected shape {type, index, id} = {'" + shape.shape_type + "', " + i + ", " + shape.id + "}");
-            shape.draw(this.back_canvas_context);
+            Log.trace_data("selected shape {type, index, id} = {'" + shape.shape_type + "', " + i + ", " + shape.id + "}");
+            shape.draw(this.language, this.back_canvas_context);
         };
     }
 
@@ -271,11 +363,11 @@ export class Scene {
     }
 
     isHoveringShape(event, point) {
-        Log.info("Scene::isHoveringShape(" + point.x + ", " + point.y + ")");
-        for (let i = this.shape_list.length - 1; i >= 0; i--) {
+        Log.trace("Scene::isHoveringShape(" + point.x + ", " + point.y + ")");
+        for (let i = 0; i < this.shape_list.length; i++) {
             if (this.shape_list[i].isPointInside(point)
-            && this.shape_list[i].text != null) {
-                Log.info("Hovering Over Shape [" + this.shape_list[i].id + "] (" + point.x + ", " + point.y + ")");
+                && this.shape_list[i].text != null) {
+                Log.trace_data("Hovering Over Shape [" + this.shape_list[i].id + "] (" + point.x + ", " + point.y + ")");
                 return this.shape_list[i];
             }
         }
@@ -294,7 +386,7 @@ export class Scene {
         if (this.hovering_canceled == true) {
             return;
         }
-        Log.trace("Scene::cancelHovering()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        Log.trace("Scene::cancelHovering()::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "]");
         if (this.tooltip_timer == null
             && this.hide_tooltip_timer == null
             && this.hovered_shape == null) {
@@ -316,8 +408,30 @@ export class Scene {
     isInShape(event, point) {
         for (let i = this.shape_list.length - 1; i >= 0; i--) {
             let shape = this.shape_list[i];
-            if (shape.isPointInside(point)) {
-                Log.info("Scene::isInShape[" + shape.id + "] (" + point.x + ", " + point.y + ")");
+            if (shape.isSelectable() && shape.isPointInside(point)) {
+                Log.trace_data("Scene::isInShape[" + shape.id + "] (" + point.x + ", " + point.y + ")");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    isInShapeOrControl(event, point) {
+        for (let i = this.shape_list.length - 1; i >= 0; i--) {
+            let shape = this.shape_list[i];
+            if (shape.isSelectable() && shape.isPointInside(point) == true || shape.isPointInsideResizeControl(point) == true) {
+                Log.trace_data("Scene::isInShapeOrControl[" + shape.id + "] (" + point.x + ", " + point.y + ")");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    isInSelectedShapeOrControl(event, point) {
+        for (let i = this.selected_shape_list.length - 1; i >= 0; i--) {
+            let shape = this.shape_list[i];
+            if (shape.isSelectable() && shape.isPointInside(point) == true || shape.isPointInsideResizeControl(point) == true) {
+                Log.trace_data("Scene::isInSelectedShapeOrControl[" + shape.id + "] (" + point.x + ", " + point.y + ")");
                 return true;
             }
         }
@@ -328,13 +442,19 @@ export class Scene {
         for (let i = this.shape_list.length - 1; i >= 0; i--) {
             let shape = this.shape_list[i];
             if (this.selected_shape_list.find(selected_shape => selected_shape.id == shape.id) == null
-                && shape.isPointInside(point)) {
+                && shape.isSelectable() && shape.isPointInside(point)) {
                 this.switchMotionMode(Scene.START);
                 shape.switchStrokeOn();
                 shape.activateControls();
-                shape.draw(this.front_canvas_context);
-                Log.info("Select Shape[" + shape.id + "] (" + point.x + ", " + point.y + ")");
+                shape.draw(this.language, this.front_canvas_context);
+                Log.trace_data("Select Shape[" + shape.id + "] (" + point.x + ", " + point.y + ")");
                 this.selected_shape_list.push(shape);
+                if (this.selected_shape_list.length == 1) {
+                    this.clipRectangle = shape.shape_clean_bound_rect.clone();
+                } else {
+                    this.clipRectangle.add(shape.shape_clean_bound_rect);
+                }
+                this.clipRectangle.min_fit(this.scene_width, this.scene_height);
             }
         }
         return this.selected_shape_list.length > 0;
@@ -351,25 +471,54 @@ export class Scene {
         });
         while (this.selected_shape_list.length > 0) {
             let shape = this.selected_shape_list.shift();
-            shape.draw(this.front_canvas_context);
+            shape.draw(this.language, this.front_canvas_context);
         }
         this.switchMotionMode(Scene.NONE);
     }
 
+    setSelectedShapes(selected_shape_list) {
+        if (selected_shape_list.length > 0) {
+            this.clipRectangle = selected_shape_list[0].shape_clean_bound_rect.clone();
+            selected_shape_list.forEach((shape) => {
+                this.clipRectangle.add(shape.shape_clean_bound_rect);
+            });
+            this.clipRectangle.min_fit(this.scene_width, this.scene_height);
+        }
+        this.drawUnselectedShapesToBackBuffer();
+        this.OnMouseUpDrag(null, null);
+    }
+
+    setSelectedShapesByID(selected_shape_id_list) {
+        if (selected_shape_id_list.length > 0) {
+            this.selected_shape_list = this.shape_list.filter(shape => selected_shape_id_list.includes(shape.id));
+            this.clipRectangle = this.selected_shape_list[0].shape_clean_bound_rect.clone();
+            this.selected_shape_list.forEach((shape) => {
+                this.clipRectangle.add(shape.shape_clean_bound_rect);
+            });
+            this.clipRectangle.min_fit(this.scene_width, this.scene_height);
+        }
+        this.drawUnselectedShapesToBackBuffer();
+        this.OnMouseUpDrag(null, null);
+    }
+
     OnMouseDown(event, point) {
-        Log.trace("Scene::OnMouseDown()::motion_mode::begin::["+Scene.getMotionModeName(this.motion_mode)+"]");
+        Log.trace("Scene::OnMouseDown()::motion_mode::begin::[" + Scene.getMotionModeName(this.motion_mode) + "]");
         if (this.isMotionMode(Scene.START) == true) {
             for (let i = 0; this.isMotionMode(Scene.START) == true && i < this.selected_shape_list.length; i++) {
                 let shape = this.selected_shape_list[i];
+                if (shape.isSelectable() == false) {
+                    continue;
+                }
                 if (shape.isPointInsideResizeControl(point)) {
+                    this.click_on_board = false;
                     this.switchMotionMode(Scene.RESIZE);
-                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::["+Scene.getMotionModeName(this.motion_mode)+"]");
+                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::[" + Scene.getMotionModeName(this.motion_mode) + "]");
                 } else if (shape.isPointInsideRotateControl(point)) {
                     this.switchMotionMode(Scene.ROTATE);
-                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::["+Scene.getMotionModeName(this.motion_mode)+"]");
+                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::[" + Scene.getMotionModeName(this.motion_mode) + "]");
                 } else if (shape.isPointInside(point)) {
                     this.switchMotionMode(Scene.DRAG);
-                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::["+Scene.getMotionModeName(this.motion_mode)+"]");
+                    Log.trace("Scene::OnMouseDown()::motion_mode::switched::[" + Scene.getMotionModeName(this.motion_mode) + "]");
                 }
             }
         }
@@ -383,7 +532,7 @@ export class Scene {
     }
 
     OnMouseMove(event, point) {
-        Log.trace("Scene::OnMouseMove()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        Log.trace("Scene::OnMouseMove()::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "]");
         if (this.motion_mode == Scene.HOVER) {
             this.OnMouseMoveHover(event, point);
         } else if (this.motion_mode == Scene.DRAG) {
@@ -396,16 +545,16 @@ export class Scene {
     }
 
     OnMouseUp(event, point) {
-        Log.trace("Scene::OnMouseUp()::motion_mode["+Scene.getMotionModeName(this.motion_mode)+"]");
+        Log.trace("Scene::OnMouseUp()::motion_mode[" + Scene.getMotionModeName(this.motion_mode) + "]");
         if (this.motion_mode == Scene.DRAG) {
             this.OnMouseUpDrag(event);
-            this.on_rasem_change_call_back();
+            this.handle_control_event(event, "scene", "mouse-drag-up", {point: point});
         } else if (this.motion_mode == Scene.RESIZE) {
             this.OnMouseUpResize(event);
-            this.on_rasem_change_call_back();
+            this.handle_control_event(event, "scene", "mouse-resize-up", {point: point});
         } else if (this.motion_mode == Scene.ROTATE) {
             this.OnMouseUpRotate(event);
-            this.on_rasem_change_call_back();
+            this.handle_control_event(event, "scene", "mouse-rotate-up", {point: point});
         }
     }
 
@@ -416,12 +565,12 @@ export class Scene {
             && this.hide_tooltip_timer == null) {
             this.tooltip_timer = setTimeout(() => {
                 this.tooltip_timer = null;
-                Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['"+Scene.getMotionModeName(this.motion_mode)+"'] 2000 timer -> tooltip show");
+                Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "'] 2000 timer -> tooltip show");
                 if (this.hovered_shape.text != null) {
                     this.tooltip = new Tooltip(this.hovered_shape.text, this.hovered_shape, "12px sans-serif", "black", "white");
-                    this.tooltip.draw(this.front_canvas_context, point);
+                    this.tooltip.draw(this.language, this.front_canvas_context, point);
                     this.hide_tooltip_timer = setTimeout(() => {
-                        Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['"+Scene.getMotionModeName(this.motion_mode)+"'] 5000 timer -> tooltip hide");
+                        Log.trace("Scene::constructor::front_canvas::mouse_move()::motion_mode['" + Scene.getMotionModeName(this.motion_mode) + "'] 5000 timer -> tooltip hide");
                         this.cancelHovering();
                     }, 5000);
                 }
@@ -430,7 +579,7 @@ export class Scene {
     }
 
     OnMouseDownDrag(event, point) {
-        Log.trace("Scene::OnMouseDownDrag()::selected_shape_list::["+this.selected_shape_list.length+"]");
+        Log.trace("Scene::OnMouseDownDrag()::selected_shape_list::[" + this.selected_shape_list.length + "]");
         this.old_point = this.new_point = point;
         this.selected_shape_list.forEach(shape => {
             shape.deactivateControls();
@@ -440,19 +589,20 @@ export class Scene {
     OnMouseMoveDrag(event, point) {
         Log.trace("Scene::OnMouseMoveDrag()");
         this.new_point = point;
-        let can_clip = true;
+        let vector = new Vector2D(this.new_point, this.old_point);
+        let clip = true;
         this.selected_shape_list.forEach(shape => {
-            can_clip &&= shape.canClip(this.old_point, this.new_point, this.scene_width, this.scene_height);
+            clip &&= shape.canClipInRect(vector);
         });
-        if (can_clip == true) {
+        if (clip == true) {
             this.selected_shape_list.forEach(shape => {
-                //Draw Back Canvas
                 this.restoreFrontBufferRectangleFromBackBuffer(shape);
             });
             this.selected_shape_list.forEach(shape => {
-                shape.dragPoints(this.old_point, this.new_point);
-                shape.draw(this.front_canvas_context);
+                shape.dragPoints(vector);
+                shape.draw(this.language, this.front_canvas_context);
             });
+            this.clipRectangle.transform(vector);
         }
         this.old_point = this.new_point;
     }
@@ -460,20 +610,17 @@ export class Scene {
     OnMouseUpDrag(event, point) {
         Log.trace("Scene::OnMouseUpDrag()");
         this.selected_shape_list.forEach(shape => {
-            //Draw Back Canvas
             this.restoreFrontBufferRectangleFromBackBuffer(shape);
         });
         this.selected_shape_list.forEach(shape => {
-            //Activate
             shape.activateControls();
-            //Draw Shape
-            shape.draw(this.front_canvas_context);
+            shape.draw(this.language, this.front_canvas_context);
         });
         this.switchMotionMode(Scene.START);
     }
 
     OnMouseDownResize(event, point) {
-        Log.trace("Scene::OnMouseDownResize()::selected_shape_list::["+this.selected_shape_list.length+"]");
+        Log.trace("Scene::OnMouseDownResize()::selected_shape_list::[" + this.selected_shape_list.length + "]");
         this.selected_shape_list.forEach(shape => {
             shape.deactivateControls();
         });
@@ -483,58 +630,58 @@ export class Scene {
     OnMouseMoveResize(event, point) {
         Log.trace("Scene::OnMouseMoveResize()");
         this.new_point = point;
-        this.selected_shape_list.forEach(shape => {
-            if (shape.canClip(this.old_point, this.new_point, this.scene_width, this.scene_height) == true) {
-                Log.trace("Scene::canClip(true)::", "shape_type, id, old_point, new_point, scene_width, scene_height", shape.shape_type, shape.id, this.old_point, this.new_point, this.scene_width, this.scene_height);
-                //Draw Back Canvas
+        let vector = new Vector2D(this.new_point, this.old_point);
+        if (this.clipRectangle.canClip(vector, this.scene_width, this.scene_height) == true) {
+            this.selected_shape_list.forEach(shape => {
                 this.restoreFrontBufferRectangleFromBackBuffer(shape);
-                //Save Shape Path New Points
-                shape.transformPoints(this.old_point, this.new_point);
-            }
-        });
-        this.selected_shape_list.forEach(shape => {
-            shape.draw(this.front_canvas_context);
-        });
+            });
+            this.selected_shape_list.forEach(shape => {
+                shape.dragPoints(vector);
+                shape.draw(this.language, this.front_canvas_context);
+            });
+            this.clipRectangle.transform(vector);
+        }
         this.old_point = this.new_point;
     }
 
     OnMouseUpResize(event, point) {
         Log.trace("Scene::OnMouseUpResize()");
         this.selected_shape_list.forEach(shape => {
-            //Draw Back Canvas
             this.restoreFrontBufferRectangleFromBackBuffer(shape);
         });
         this.selected_shape_list.forEach(shape => {
-            //Activate
             shape.activateControls();
-            //Draw Shape
-            shape.draw(this.front_canvas_context);
+            shape.draw(this.language, this.front_canvas_context);
         });
         this.switchMotionMode(Scene.START);
     }
-    
+
     OnMouseDownRotate(event, point) {
-        Log.trace("Scene::OnMouseDownRotate()::selected_shape_list::["+this.selected_shape_list.length+"]");
+        Log.trace("Scene::OnMouseDownRotate()::selected_shape_list::[" + this.selected_shape_list.length + "]");
+        this.delta_rotation_angle = 0;
+        this.old_rotation_angle = 0;
         this.selected_shape_list.forEach(shape => {
             shape.deactivateControls();
         });
-        this.old_point = this.new_point = point;
+        this.rotation_center_point = this.old_point = this.new_point = point;
     }
 
     OnMouseMoveRotate(event, point) {
         Log.trace("Scene::OnMouseMoveRotate()");
+        if (this.rotation_center_point == null) {
+            Log.trace("Scene::OnMouseMoveRotate()::rotation_center_point == null!!");
+        }
         this.new_point = point;
-        this.selected_shape_list.forEach(shape => {
-            if (shape.canClip(this.old_point, this.new_point, this.scene_width, this.scene_height) == true) {
-                Log.trace("Scene::canClip(true)::", "shape_type, id, old_point, new_point, scene_width, scene_height", shape.shape_type, shape.id, this.old_point, this.new_point, this.scene_width, this.scene_height);
-                //Draw Back Canvas
-                this.restoreFrontBufferRectangleFromBackBuffer(shape);
-                //Save Shape Path New Points
-                shape.rotatePoints(this.old_point, this.new_point);
-            }
+        this.new_rotation_angle = Geometry.getAngle(this.rotation_center_point, this.new_point);
+        this.delta_rotation_angle = this.old_rotation_angle <= this.new_rotation_angle ? this.new_rotation_angle - this.old_rotation_angle : 360 - this.old_rotation_angle + this.new_rotation_angle;
+        Log.trace("Scene::OnMouseMoveRotate::Angle", "rotation_center_point, new_point, new_rotation_angle, old_rotation_angle, delta_rotation_angle", this.rotation_center_point, this.new_point, this.new_rotation_angle, this.old_rotation_angle, this.delta_rotation_angle);
+        this.old_rotation_angle = this.new_rotation_angle;
+        this.selected_shape_list.forEach((shape) => {
+            this.restoreFrontBufferRectangleFromBackBuffer(shape);
+            shape.rotateAngle(this.delta_rotation_angle);
         });
         this.selected_shape_list.forEach(shape => {
-            shape.draw(this.front_canvas_context);
+            shape.draw(this.language, this.front_canvas_context);
         });
         this.old_point = this.new_point;
     }
@@ -542,23 +689,36 @@ export class Scene {
     OnMouseUpRotate(event, point) {
         Log.trace("Scene::OnMouseUpRotate()");
         this.selected_shape_list.forEach(shape => {
-            //Draw Back Canvas
             this.restoreFrontBufferRectangleFromBackBuffer(shape);
         });
         this.selected_shape_list.forEach(shape => {
-            //Activate
             shape.activateControls();
-            //Draw Shape
-            shape.draw(this.front_canvas_context);
+            shape.draw(this.language, this.front_canvas_context);
         });
         this.switchMotionMode(Scene.START);
+        this.rotation_center_point = null;
+        this.delta_rotation_angle = 0;
+        this.old_rotation_angle = 0;
     }
 
-    clipImage(image, image_name, image_type) {
-        Log.trace("Scene::clipImage()::selected_shape_list::["+this.selected_shape_list.length+"]");
+    clipImage(image_instance) {
+        Log.trace("Scene::clipImage()::selected_shape_list::[" + this.selected_shape_list.length + "]");
         this.selected_shape_list.forEach(shape => {
-            shape.setClipImage(image, image_name, image_type);
-            shape.draw(this.front_canvas_context);
+            shape.setClipImage(image_instance);
+            shape.draw(this.language, this.front_canvas_context);
         });
+    }
+    
+    deleteSelectedShapes() {
+        Log.trace("Scene::deleteSelectedShapes()::selected_shape_list::[" + this.selected_shape_list.length + "]");
+        let deleted_shape_id_list = [];
+        this.selected_shape_list.forEach(selected_shape => {
+            let shaped_index = this.shape_list.findIndex(shape => shape.id == selected_shape.id);
+            this.shape_list.splice(shaped_index, 1);
+            deleted_shape_id_list.push(selected_shape.id);
+        });
+        this.selected_shape_list = [];
+        this.draw();
+        return deleted_shape_id_list;
     }
 }

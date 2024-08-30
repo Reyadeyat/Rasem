@@ -1,22 +1,17 @@
 /*
- * Copyright (C) 2023 - 2024 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
-import { Log } from "../util/log";
-import { Point } from "../g2d/point";
+"use strict";
+
+import { Log } from '@reyadeyat/haseb'
 
 export class RasemMenu {
 
@@ -71,7 +66,7 @@ export class RasemMenu {
 
         // Event listener for right-click on the rasem_canvas
         rasem_scene.front_canvas.addEventListener("contextmenu", function (event) {
-            const x = event.clientX;
+            /*const x = event.clientX;
             const y = event.clientY;
             const front_canvas_bounding_rect = rasem_scene.getFrontCanvasBoundingRect();
             const point = new Point(event.pageX - front_canvas_bounding_rect.left, event.pageY - front_canvas_bounding_rect.top);
@@ -81,12 +76,12 @@ export class RasemMenu {
             rasem_menu.menu.style.left = x + "px";
             rasem_menu.menu.style.top = y + "px";
             rasem_menu.menu.style.display = "block";
-            rasem_menu.select_list.style.display = "block";
+            rasem_menu.select_list.style.display = "block";*/
         });
 
         // Event listener to hide the menu and select list when rasem_canvas is clicked
         rasem_scene.front_canvas.addEventListener("click", function (event) {
-            const x = event.clientX;
+            /*const x = event.clientX;
             const y = event.clientY;
             const front_canvas_bounding_rect = rasem_scene.getFrontCanvasBoundingRect();
             const point = new Point(event.pageX - front_canvas_bounding_rect.left, event.pageY - front_canvas_bounding_rect.top);
@@ -100,7 +95,7 @@ export class RasemMenu {
             rasem_menu.menu.style.left = x + "px";
             rasem_menu.menu.style.top = y + "px";
             rasem_menu.menu.style.display = "block";
-            rasem_menu.select_list.style.display = "block";
+            rasem_menu.select_list.style.display = "block";*/
         });
 
         // Event listener to show the select list when the rasem_canvas is clicked
@@ -123,6 +118,10 @@ export class RasemMenu {
             Log.trace("Selected value: " + selectedValue);
             rasem_menu.menu.style.display = "none";
         });
+    }
+
+    changeLanguage(language, direction) {
+        this.language = language;
     }
 
     setOptionList(select_option_list) {

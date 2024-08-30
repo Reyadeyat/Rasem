@@ -1,39 +1,32 @@
 /*
- * Copyright (C) 2023 - 2024 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
-import { Log } from '../util/log.js'
-import { Color } from '../util/color.js'
+"use strict";
+
+import { Log } from '@reyadeyat/haseb'
 import { Point } from './point.js'
 import { Shape } from './shape.js'
-import { Edge } from './edge.js'
-import { Radian } from '../math/geometry.js'
-import { ShapeControl, ShapeControlGroup } from './control.js'
+import { Edge, EdgeType } from './edge.js'
 
 export class Line extends Shape {
 
-    constructor(id, stroke_style, fill_style, point_A, point_B, text, control_width) {
-        super("Line", id, stroke_style, fill_style,
-            {   center: new Point((point_A.x + point_B.x) / 2, (point_A.y + point_B.y) / 2),
-                distance: Math.sqrt(Math.pow(point_B.x - point_A.x, 2) + Math.pow(point_B.y - point_A.y, 2)) / 2,
-                radius: Math.sqrt(Math.pow(point_B.x - point_A.x, 2) + Math.pow(point_B.y - point_A.y, 2)) / 2,
-                slope: (point_B.y - point_A.y) / (point_B.x - point_A.x),
+    constructor(configuration, id, name, rotation_angle, stroke_style, fill_style, start_point, end_point, text, control_width) {
+        super("Line", configuration, id, name, rotation_angle, stroke_style, fill_style,
+            {   center_point: new Point((start_point.x + end_point.x) / 2, (start_point.y + end_point.y) / 2),
+                distance: Math.sqrt(Math.pow(end_point.x - start_point.x, 2) + Math.pow(end_point.y - start_point.y, 2)) / 2,
+                radius: Math.sqrt(Math.pow(end_point.x - start_point.x, 2) + Math.pow(end_point.y - start_point.y, 2)) / 2,
+                slope: (end_point.y - start_point.y) / (end_point.x - start_point.x),
                 delta: new Point(0, 0),
-                point_A: point_A,
-                point_B: point_B
+                start_point: start_point,
+                end_point: end_point
             },
             text,
             control_width);
@@ -43,43 +36,36 @@ export class Line extends Shape {
         this.shape_path_points = [];
         this.shape_path_edges = [];
         
-        this.point_A.x = this.point_A.x + this.delta.x;
-        this.point_A.y = this.point_A.y + this.delta.y;
+        this.start_point.x = this.start_point.x + this.delta.x;
+        this.start_point.y = this.start_point.y + this.delta.y;
 
-        this.point_B.x = this.point_B.x + this.delta.x;
-        this.point_B.y = this.point_B.y + this.delta.y;
+        this.end_point.x = this.end_point.x + this.delta.x;
+        this.end_point.y = this.end_point.y + this.delta.y;
         
         this.shape_path_points = [
-            this.point_A,
-            this.point_B
+            this.start_point,
+            this.end_point
         ];
         
-        this.shape_path_edges = Edge.doEdges(this.shape_path_points, Edge.line, true);
+        this.shape_path_edges = Edge.doEdges(this.shape_path_points, EdgeType.line_connector, true);
     }
 
     isPointInside(point) {
         // Calculate the slope of the line
-        let slope = (this.point_B.y - this.point_A.y) / (this.point_B.x - this.point_A.x);
+        let slope = (this.end_point.y - this.start_point.y) / (this.end_point.x - this.start_point.x);
 
         // Calculate the expected y-coordinate on the line for the given x-coordinate
-        let y = this.point_A.y + slope * (point.x - this.point_A.x);
+        let y = this.start_point.y + slope * (point.x - this.start_point.x);
 
         // Check if the actual y-coordinate matches the expected y-coordinate
         Log.trace_data("isPointInside: Math.abs(point.y - y) = " + Math.abs(point.y - y));
         return Math.abs(point.y - y) < 4;//< Number.EPSILON;
     }
 
-    dragPoints(old_point, new_point) {
-        this.delta.x = new_point.x - old_point.x;
-        this.delta.y = new_point.y - old_point.y;
-        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
-        this.generatePath();
-    }
-
     transformPoints(old_point, new_point) {
         this.delta.x = new_point.x - old_point.x;
         this.delta.y = new_point.y - old_point.y;
-        this.center = new Point(this.center.x + new_point.x - old_point.x, this.center.y + new_point.y - old_point.y);
+        this.center_point = new Point(this.center_point.x + new_point.x - old_point.x, this.center_point.y + new_point.y - old_point.y);
         this.generatePath();
     }
 
@@ -194,7 +180,8 @@ export class Line extends Shape {
     scalePoints(old_point, new_point) {
     }
 
-    rotatePoints(old_point, new_point) {
+    rotateAngle(rotation_angle) {
+        super.rotateAngle(rotation_angle);
         
     }
 

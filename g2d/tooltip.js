@@ -1,21 +1,17 @@
 /*
- * Copyright (C) 2023 - 2024 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
-import { Log } from "../util/log";
+"use strict";
+
+import { Log } from '@reyadeyat/haseb'
 
 export class Tooltip {
     constructor(text, hovered_shape, font, text_style, background_style) {
@@ -26,11 +22,11 @@ export class Tooltip {
         this.background_style = background_style;
     }
 
-    draw(context, mouse_point) {
+    draw(language, context, mouse_point) {
         Log.trace("Tooltip::draw()::point("+mouse_point.x+", "+mouse_point.y+")");
         let saved_font = context.font;
         let saved_style = context.fillStyle;
-        let new_text = this.text.text;
+        let new_text = this.text.text[language];
         context.font = this.font;
         context.text_style = this.text_style;
         let text_metrics = context.measureText(new_text);
