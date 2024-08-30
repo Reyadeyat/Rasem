@@ -1,0 +1,124 @@
+<!--
+/*
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
+ */
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rasem Project Test</title>
+    <script type="importmap">
+        {
+          "imports": {
+            "@reyadeyat/haseb": "./node_modules/@reyadeyat/haseb/index.js"
+          }
+        }
+    </script>
+    <script type="module" src="index.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100% !important;
+        }
+
+        .container {
+            display: flex;
+            position: relative;
+            width: 100% !important;
+            flex-direction: column;
+            height: 100vh;
+            max-height: 100vh;
+        }
+
+        .rasem_container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            flex-grow: 1;
+            overflow: auto;
+            background-color: #f0f0f0;
+            width: 100% !important;
+            scroll-behavior: smooth; 
+        }
+
+        .rasem_container_status_bar {
+            width: 100% !important;
+            height: 32px;
+            max-height: 32px;
+            min-height: 32px;
+        }
+
+        .disable-select {
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer */
+            -khtml-user-select: none; /* KHTML browsers (e.g. Konqueror) */
+            -webkit-user-select: none; /* Chrome, Safari, and Opera */
+            -webkit-touch-callout: none; /* Disable Android and iOS callouts */
+            user-select: none; /* Standard syntax */
+        }
+
+    </style>
+</head>
+
+<body>
+    <div id="container" class="container" dir="ltr">
+        <h1>Welcome to Rasem Project Test</h1>
+        <div id="rasem_container" class="rasem_container"></div>
+        <div id="rasem_container_status_bar" class="rasem_container_status_bar"></div>
+    </div>
+
+    <!-- Include the index.js file -->
+    <script type="module" >
+        import { RasemReportEngine } from './engine/rasem-report-engine.js';
+        
+        let language = "en";
+        let direction = "ltr";
+        let container_element = document.getElementById("container");
+        let rasem_report_engine = new RasemReportEngine(language);
+        /*setInterval(() => {
+            language = language == "ar" ? "en" : "ar";
+            direction = language == "ar" ? "rtl" : "ltr";
+            if (direction == "ltr") {
+                container_element.direction = direction;
+                container_element.direction = direction;
+            } else {
+                container_element.direction = direction;
+                container_element.direction = direction;
+            }
+            rasem_report_engine.changeLanguage(language);
+        }, 3000);*/
+
+        /*class RasemImplementationHTMLElement extends HTMLElement {
+            constructor() {
+
+            }
+        }
+        customElements.define('rasem-component', RasemImplementationHTMLElement);
+        */
+    </script>
+<!--
+    <div class="container" dir="rtl">
+        <h1>Welcome to Rasem Project Test</h1>
+        <rasem-component id="rasem_container" class="rasem_container"></rasem-component>
+    </div>
+-->
+</body>
+
+</html>

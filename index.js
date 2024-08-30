@@ -1,93 +1,135 @@
 /*
- * Copyright (C) 2023 Reyadeyat
- *
- * Reyadeyat/Rasem is licensed under the
- * BSD 3-Clause "New" or "Revised" License
- * you may not use this file except in compliance with the License.
+ * Copyright (C) 2023-2024 Reyadeyat
+ * All Rights Reserved.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- * https://reyadeyat.net/LICENSE/RASEM.LICENSE
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * https://reyadeyat.net/LICENSE/REYADEYAT.LICENSE
+ * 
+ * This License permits the use, modification, and distribution of the code
+ * under the terms specified in the License document.
  */
 
 "use strict";
 
-import { Log } from './log.js'
-import { Paint } from './paint.js';
-import { Line } from './line.js';
-import { Scene } from './scene.js';
-import { Shape } from './shape.js';
-import { Point } from './point.js';
-import { Rectangle } from './rectangle.js';
-import { Circle } from './circle.js';
-import { Triangle } from './triangle.js';
-import { Ellipse } from './ellipse.js';
+import { Paint } from './ui2d/paint.js';
+import { ShapeUtils } from './g2d/shape_utils.js';
+import { Text2D } from './g2d/text.js';
+import { FillStyle2D, StrokeStyle2D, FontStyle2D, FontStrokeStyle2D, FontFillStyle2D, Resizable2D } from './data-structure/g2d-data-structure.js';
+import { ImageInstance } from './g2d/image_instance.js';
+import { FontInstance } from './g2d/font_instance.js';
 
 export class Rasem extends Paint {
 
-    constructor(rasem_json) {
-        super(rasem_json.log_level);
-        
-        var posX = rasem_json.posX;//50;
-        var TWO_PI = Math.PI * 2;
-
-        //var canvas_width = rasem_json.canvas_width//400;
-        //var canvas_height = rasem_json.canvas_height;//400;
-
-        this.scene = new Scene(rasem_json.canvas_container_id, rasem_json.canvas_fore_color, rasem_json.canvas_back_color, rasem_json.canvas_width, rasem_json.canvas_height);
-        let shap00 = new Line(0, {color: "green", line_length: 8, line_gab: 4}, {color: "yellow"}, 400, 400, new Point(200, 200), new Point(217, 305));
-        let shap01 = new Rectangle(1, {color: "white", line_length: 8, line_gab: 4}, {color: "red"}, 400, 400, 20, 20, 50, 50);
-        let shap02 = new Rectangle(2, {color: "red", line_length: 8, line_gab: 4}, {color: "white"}, 400, 400, 90, 20, 50, 50);
-        let shap03 = new Rectangle(3, {color: "orange", line_length: 8, line_gab: 4}, {color: "blue"}, 400, 400, 100, 20, 50, 30);
-        let shap04 = new Circle(4, {color: "yellow", line_length: 8, line_gab: 4}, {color: "green"}, 400, 400, 255, 45, 25);
-        let shap05 = new Triangle(5, {color: "red", line_length: 8, line_gab: 4}, {color: "grey"}, 400, 400, new Point(300, 70), new Point(320, 20), new Point(360, 90));
-        //let shap06 = new Ellipse(6, "white", "yellow", 400, 400, 100, 115, 50, 25);
-        //let shap07 = new Ellipse(7, "green", "orange", 400, 400, 100, 230, 25, 50);
-
-        this.scene.clean(this.scene.front_canvas_context);
-        this.scene.addShape(shap00);
-        this.scene.addShape(shap01);
-        this.scene.addShape(shap02);
-        this.scene.addShape(shap03);
-        this.scene.addShape(shap04);
-        this.scene.addShape(shap05);
-        //this.scene.addShape(shap06);
-        //this.scene.addShape(shap07);
+    constructor(json_configuration_file, rutime_language) {
+        super(json_configuration_file);
+        this.loadConfiguration(this.json_configuration_file, rutime_language);
     }
 
-    getRassamContainer() {
-        return this.scene.canvas_container_element;
+    getRasemContainer() {
+        return this.rasem_container.scene.container_element;
     }
 
-    getRassamCanvas() {
-        return this.scene.front_canvas;
+    getRasemCanvas() {
+        return this.rasem_container.scene.front_canvas;
     }
 
-    getRassamFrontCanvasContext() {
-        return this.scene.front_canvas_context;
+    getRasemFrontCanvasContext() {
+        return this.rasem_container.scene.front_canvas_context;
     }
 
-    getRassamFrontCanvasContextPixels() {
-        return this.scene.front_canvas_context_pixels;
+    getRasemFrontCanvasContextPixels() {
+        return this.rasem_container.scene.front_canvas_context_pixels;
     }
 
-    getRassamBackCanvasContext() {
-        return this.scene.back_canvas_context;
+    getRasemBackCanvasContext() {
+        return this.rasem_container.scene.back_canvas_context;
     }
 
-    getRassamBackCanvasContextPixels() {
-        return this.scene.back_canvas_context_pixels;
+    getRasemBackCanvasContextPixels() {
+        return this.rasem_container.scene.back_canvas_context;
+    }
+
+    changeLanguage(language, direction) {
+        this.language = language;
+        this.direction = direction;
+        this.rasem_container.changeLanguage(this.language, this.direction);
+        return this.rasem_container.scene.back_canvas_context;
     }
 
     /* process.*/
+    loadConfiguration(configuration, language, direction) {
+        this.language = language;
+        this.direction = direction;
+        this.configuration = configuration;
+        if (this.rasem_container != null) {
+            this.rasem_container.clean();
+        }
+        let tree_inlisted = this.configuration.tree_inlisted;
+        let scene_shape_list = [];//this.configuration.tree_inlisted;
+        for (let i = 0; i < this.configuration.tree_inlisted.length; i++) {
+            let tree_node = tree_inlisted[i];
+            /*if (tree_node.type == "GROUP" || tree_node.type == "DATA" || tree_node.category == "ASSETS" || tree_node.type == "FONTS" || tree_node.type == "IMAGES"
+            || (tree_node.node_parent != null && (tree_node.node_parent.type == "DATA" || tree_node.node_parent.category == "ASSETS" || tree_node.node_parent.type == "FONTS" || tree_node.type == "IMAGES"))
+            )*/
+            /*if (shape_configuration.type == true) {
+                continue;
+            }*/
+            if (tree_node.node_id <= 0 || tree_node.type == "GROUP") {
+                continue;
+            }
+            let shape_configuration = tree_inlisted[i].user_data.shape;
+            shape_configuration.control_width = this.configuration.control_width;
+            tree_inlisted[i].user_data.shape = ShapeUtils.creatShape(shape_configuration);
+            let shape = tree_inlisted[i].user_data.shape;
+            if (shape.clip_rect_shape_id != null) {
+                let clipping_shape = scene_shape_list.find(t_shape => t_shape.id == shape.clip_rect_shape_id);
+                shape.clip_rect = clipping_shape.shape_clip_bound_rect;
+            }
+            scene_shape_list.push(shape);
+        }
+        
+        this.rasem_container = new RasemContainer(this.configuration, this.container_id, language, direction);
+        this.rasem_container.scene.setOnRasemChangeCallBack(this.configuration.on_rasem_external_callback);
+        this.rasem_container.scene.clean(this.rasem_container.scene.front_canvas_context);
 
-    draw() {
-        this.scene.draw();
+        for (let i = 0; i < scene_shape_list.length; i++) {
+            let shape = scene_shape_list[i];
+            this.rasem_container.scene.addShape(shape);
+        }
+        this.rasem_container.scene.draw();
     }
 
+    creatShape(new_shape) {
+        return ShapeUtils.creatShape(new_shape);
+    }
+
+    setTree() {
+        this.rasem_container.scene.ui_tree.setTree();
+    }
+    
+    addShape(new_shape, draw_shape) {
+        this.rasem_container.scene.deselectAllShapes();
+        this.rasem_container.scene.addShape(new_shape, draw_shape);
+    }
+    
+    setSelectedShapesByID(selecte_shape_id_list) {
+        this.rasem_container.scene.deselectAllShapes();
+        this.rasem_container.scene.setSelectedShapesByID(selecte_shape_id_list);
+    }
+
+    getRuntimeConfiguration() {
+        return this.json_configuration_file;
+    }
+
+    toggleFullScreen() {
+        this.rasem_container.handleFullScreen();
+    }
+
+    draw() {
+        this.creator_container.scene.draw();
+    }
 }
+
+export {ShapeUtils, FillStyle2D, StrokeStyle2D, FontStyle2D, FontStrokeStyle2D, FontFillStyle2D, Text2D, Resizable2D, ImageInstance, FontInstance};
+
+
